@@ -1,0 +1,14 @@
+Save Tool
+---------
+1. Double-click savetool.exe. Your browser opens the Save Tool page.
+2. Paste one or more links (Threads, YouTube, Instagram, Facebook, TikTok, X...), click Download.
+   Files go to  Downloads\SaveTool   (button "Open folder" on the page).
+3. Close the black window to quit.
+
+First use of a non-Threads link downloads yt-dlp and ffmpeg (~130 MB total, once) next to the exe.
+Command line:  savetool.exe <link> [folder]
+
+Stopped working? Click "Update" on the page (updates yt-dlp).
+Threads broke? Put the newer core.mjs from the release next to savetool.exe.
+Private videos: put a cookies.txt (exported from your browser) next to savetool.exe.
+(Windows SmartScreen may warn on first run because the exe is unsigned: More info > Run anyway.)

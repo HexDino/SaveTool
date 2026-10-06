@@ -3,3 +3,8 @@ node_modules/
 __pycache__/
 *.mp4
 out*/
+
+# generated per machine by native_host/install.ps1
+native_host/com.socialdownloader.ytdlp.json
+native_host/yt_dlp_host.bat
+app/dist/

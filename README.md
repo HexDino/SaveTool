@@ -135,12 +135,17 @@ Personal use only. Not for redistribution.
 
 ## Save Tool (standalone Windows app)
 
-No browser or Python needed: download `savetool.exe` from the [latest release](../../releases/latest), double-click it, paste a link, and the video is saved to `DownloadsSaveTool`.
+No browser extension, Python or install needed. Download `savetool.exe` from the [latest release](../../releases/latest) and double-click it: your browser opens a small page where you paste links and click **Download**. Files go to `DownloadsSaveTool`.
 
-Works with **Threads, YouTube, Instagram, Facebook, TikTok, X** and other sites yt-dlp supports.
+Works with **Threads, YouTube, Instagram, Facebook, TikTok, X** and other sites yt-dlp supports. Pick video (MP4) or audio (MP3) and a quality cap, paste several links at once, watch progress, cancel, and open the file or folder from the page.
 
 - Command line: `savetool.exe <link> [folder]`
-- First use of a non-Threads link downloads yt-dlp (~18 MB) and ffmpeg (~115 MB) next to the exe, once. ffmpeg merges video+audio so YouTube comes out in full quality.
-- Stopped working? Run `savetool.exe update` (or type `update` in the app) to update yt-dlp. For Threads, download the new `core.mjs` from the release and put it next to the exe.
-- Private / age-restricted / login-only videos: export your browser cookies as `cookies.txt` and put it next to the exe.
-- Build from source: `node build.mjs` (Node 24+) -> `dist/savetool.exe`. Threads extractor: `src/core.mjs`.
+- First use of a non-Threads link downloads yt-dlp (~18 MB) and ffmpeg (~115 MB) next to the exe, once.
+- Stopped working? Click **Update** on the page (updates yt-dlp). For Threads, put the newer `core.mjs` from the release next to the exe.
+- Private / age-restricted / login-only videos: export browser cookies as `cookies.txt` and put it next to the exe.
+- The page only listens on `127.0.0.1` and every request needs a per-run token, so other websites cannot drive it.
+
+### Project layout
+
+- `app/` — Save Tool. `app/src/`: `app.mjs` (entry), `server.mjs` + `ui.html` (web UI), `jobs.mjs` (download jobs), `tools.mjs` (yt-dlp/ffmpeg setup), `core.mjs` (Threads extractor, the file to fix when Threads changes). Build: `node app/build.mjs` (Node 24+) gives `app/dist/savetool.exe`.
+- Repo root — the Chrome extension (below). It stays at the root because Chrome loads this folder and the native host is registered to it.

@@ -1,13 +1,7 @@
-// Usage: node threads.mjs <threads post url> [output dir]
-// Downloads every video/photo of a Threads post (single video, photo, or carousel).
-//
-// Fetches the post page with browser-like headers, reads the embedded JSON the
-// web app hydrates from, finds the post object by shortcode and saves its media.
-// No login, cookies or GraphQL doc_id needed.
-import { mkdir, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-
-const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36";
+// Threads extractor core. This is the file that breaks when Meta changes the page:
+// edit/replace it (or drop a fixed copy next to the exe as core.mjs) to update.
+export const VERSION = "1.2.0";
+export const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36";
 const pageHeaders = {
     "user-agent": UA,
     accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -29,7 +23,7 @@ export function parseThreadsUrl(input) {
     return code;
 }
 
-async function fetchRetry(url, opts, tries = 3) {
+export async function fetchRetry(url, opts, tries = 3) {
     let err;
     for (let i = 0; i < tries; i++) {
         try {
@@ -87,21 +81,3 @@ export async function getThreadsMedia(input) {
     return { code, user: post.user?.username, items };
 }
 
-// CLI
-if (import.meta.url === new URL(process.argv[1], "file://").href || process.argv[1]?.endsWith("threads.mjs")) {
-    const [url, dir = "."] = process.argv.slice(2);
-    if (!url) { console.error("usage: node threads.mjs <threads post url> [output dir]"); process.exit(1); }
-    try {
-        const { code, items } = await getThreadsMedia(url);
-        await mkdir(dir, { recursive: true });
-        for (const [i, it] of items.entries()) {
-            const buf = Buffer.from(await fetchRetry(it.url, { headers: { "user-agent": UA } }).then(r => r.arrayBuffer()));
-            const name = `threads_${code}${items.length > 1 ? `_${i + 1}` : ""}.${it.ext}`;
-            await writeFile(join(dir, name), buf);
-            console.log(`saved ${name} (${it.type}, ${buf.length} bytes)`);
-        }
-    } catch (e) {
-        console.error("error:", e.message);
-        process.exit(1);
-    }
-}

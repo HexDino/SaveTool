@@ -1,9 +1,0 @@
-﻿{
-    "path":  "D:\\Workspace\\Savefrom\\native_host\\yt_dlp_host.bat",
-    "description":  "yt-dlp native host for Social Media Downloader extension",
-    "name":  "com.socialdownloader.ytdlp",
-    "allowed_origins":  [
-                            "chrome-extension://bchmpgcmilkejiknpnajpfdcbnianhfo/"
-                        ],
-    "type":  "stdio"
-}
