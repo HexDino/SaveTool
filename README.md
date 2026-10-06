@@ -135,8 +135,12 @@ Personal use only. Not for redistribution.
 
 ## Save Tool (standalone Windows app)
 
-No browser or Python needed: download `savetool.exe` from the [latest release](../../releases/latest), double-click it, paste a video link, and the video is saved to `Downloads\Threads`.
+No browser or Python needed: download `savetool.exe` from the [latest release](../../releases/latest), double-click it, paste a link, and the video is saved to `DownloadsSaveTool`.
+
+Works with **Threads, YouTube, Instagram, Facebook, TikTok, X** and other sites yt-dlp supports.
 
 - Command line: `savetool.exe <link> [folder]`
-- If Threads changes its page and it stops working, download the new `core.mjs` from the release and put it next to `savetool.exe`.
-- Build from source: `node build.mjs` (Node 24+) → `dist/savetool.exe`. The extractor lives in `src/core.mjs`.
+- First use of a non-Threads link downloads yt-dlp (~18 MB) and ffmpeg (~115 MB) next to the exe, once. ffmpeg merges video+audio so YouTube comes out in full quality.
+- Stopped working? Run `savetool.exe update` (or type `update` in the app) to update yt-dlp. For Threads, download the new `core.mjs` from the release and put it next to the exe.
+- Private / age-restricted / login-only videos: export your browser cookies as `cookies.txt` and put it next to the exe.
+- Build from source: `node build.mjs` (Node 24+) -> `dist/savetool.exe`. Threads extractor: `src/core.mjs`.
