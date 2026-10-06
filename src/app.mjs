@@ -1,4 +1,4 @@
-// Threads video saver: interactive when double-clicked, or `threads.exe <url> [folder]`.
+// Threads video saver: interactive when double-clicked, or `savetool.exe <url> [folder]`.
 import { mkdir, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -39,7 +39,7 @@ async function main() {
         try { await save(core, argUrl, argDir || "."); }
         catch (e) { console.error("error:", e.message); process.exit(1); }
     } else {
-        console.log(`Threads Video Saver v${core.VERSION} (${source} extractor)`);
+        console.log(`Save Tool v${core.VERSION} (${source} extractor)`);
         console.log(`Saving to: ${defaultDir}\nPaste a Threads post link and press Enter. Empty line to quit.\n`);
         const rl = createInterface({ input: process.stdin, output: process.stdout });
         while (true) {

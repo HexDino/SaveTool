@@ -133,10 +133,10 @@ pip install --upgrade yt-dlp
 
 Personal use only. Not for redistribution.
 
-## Threads Video Saver (standalone Windows app)
+## Save Tool (standalone Windows app)
 
-No browser or Python needed: download `threads.exe` from the [latest release](../../releases/latest), double-click it, paste a Threads link, and the video is saved to `Downloads\Threads`.
+No browser or Python needed: download `savetool.exe` from the [latest release](../../releases/latest), double-click it, paste a video link, and the video is saved to `Downloads\Threads`.
 
-- Command line: `threads.exe <link> [folder]`
-- If Threads changes its page and it stops working, download the new `core.mjs` from the release and put it next to `threads.exe`.
-- Build from source: `node build.mjs` (Node 24+) → `dist/threads.exe`. The extractor lives in `src/core.mjs`.
+- Command line: `savetool.exe <link> [folder]`
+- If Threads changes its page and it stops working, download the new `core.mjs` from the release and put it next to `savetool.exe`.
+- Build from source: `node build.mjs` (Node 24+) → `dist/savetool.exe`. The extractor lives in `src/core.mjs`.
