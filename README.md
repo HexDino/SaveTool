@@ -135,7 +135,7 @@ Personal use only. Not for redistribution.
 
 ## Save Tool (standalone Windows app)
 
-No browser extension, Python or install needed. Download `savetool.exe` from the [latest release](../../releases/latest) and double-click it: your browser opens a small page where you paste links and click **Download**. Files go to `DownloadsSaveTool`.
+No browser extension, Python or install needed. Download `savetool.exe` from the [latest release](../../releases/latest) and double-click it: your browser opens a small page where you paste links and click **Download**. Files go to `Downloads\SaveTool`.
 
 Works with **Threads, YouTube, Instagram, Facebook, TikTok, X** and other sites yt-dlp supports. Pick video (MP4) or audio (MP3) and a quality cap, paste several links at once, watch progress, cancel, and open the file or folder from the page.
 
