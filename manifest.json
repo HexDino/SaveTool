@@ -1,0 +1,42 @@
+{
+  "name": "Social Media Downloader",
+  "version": "1.0.0",
+  "description": "Download videos and images from social media platforms",
+  "manifest_version": 3,
+  "permissions": [
+    "downloads",
+    "activeTab",
+    "scripting",
+    "nativeMessaging",
+    "storage"
+  ],
+  "host_permissions": [
+    "*://*.instagram.com/*",
+    "*://*.facebook.com/*",
+    "*://*.threads.net/*",
+    "*://*.threads.com/*",
+    "*://*.fbcdn.net/*",
+    "*://*.cdninstagram.com/*",
+    "*://*.youtube.com/*",
+    "*://*.youtu.be/*",
+    "*://*.tiktok.com/*",
+    "*://*.twitter.com/*",
+    "*://*.x.com/*",
+    "*://*.googlevideo.com/*",
+    "*://*.tiktokcdn.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Social Media Downloader"
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

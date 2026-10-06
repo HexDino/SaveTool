@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * { box-sizing: border-box; }
+    body { width: 400px; padding: 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 14px; }
+    h3 { margin: 0 0 16px; font-size: 16px; font-weight: 600; }
+    .input-group { margin-bottom: 12px; }
+    label { display: block; margin-bottom: 6px; font-weight: 500; }
+    textarea { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; font-family: 'SF Mono', 'Monaco', 'Consolas', monospace; resize: vertical; min-height: 200px; }
+    textarea:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2); }
+    .button-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    button { flex: 1; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+    button:hover { border-color: #1a73e8; }
+    button.save { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+    button.save:hover { background: #1557b0; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status { margin-top: 12px; padding: 10px; border-radius: 6px; font-size: 13px; display: none; }
+    .status.success { background: #e6f4ea; color: #137333; display: block; }
+    .status.error { background: #fce8e6; color: #c5221f; display: block; }
+    .note { margin-top: 16px; padding: 12px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px; font-size: 13px; line-height: 1.5; }
+    .note p { margin: 0 0 8px; }
+    .instructions { font-size: 13px; line-height: 1.5; color: #555; }
+    .instructions li { margin-bottom: 4px; }
+  </style>
+</head>
+<body>
+  <h3>Social Media Downloader - Options</h3>
+
+  <div class="input-group">
+    <label for="cookiesTextarea">Cookies (Netscape format)</label>
+    <textarea id="cookiesTextarea" placeholder="# Netscape HTTP Cookie File&#10;# https://www.toptal.com..."></textarea>
+  </div>
+
+  <div class="button-row">
+    <button id="saveBtn">Save</button>
+    <button id="loadBtn">Load</button>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div class="note">
+    <p><strong>When are cookies needed?</strong></p>
+    <p>Cookies are required for login-gated platforms like Threads, Instagram, and Facebook to bypass video availability restrictions.</p>
+    <p><strong>How to export cookies:</strong></p>
+    <ul class="instructions">
+      <li>Chrome: Install the "EditThisCookie" extension, visit the platform site, export cookies in Netscape format</li>
+      <li>Edge: Install the "EditThisCookie" extension, visit the platform site, export cookies in Netscape format</li>
+      <li>Firefox: Install the "Cookie Editor" add-on, visit the platform site, export cookies in Netscape format</li>
+    </ul>
+  </div>
+
+  <script src="options.js" type="module"></script>
+</body>
+</html>
