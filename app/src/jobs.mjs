@@ -18,6 +18,7 @@ const isYoutube = url => { try { return /(^|\.)(youtube\.com|youtu\.be)$/.test(n
 
 export const isThreads = url => { try { return /^(www\.)?threads\.(com|net)$/.test(new URL(url).hostname); } catch { return false; } };
 
+// outDir: folder path, or a function returning it (read when a job is added, so the user can change it)
 export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
     const jobs = new Map();
     let seq = 0;
@@ -28,13 +29,13 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
         const { core } = await loadCore();
         set(job, { status: "running", message: "Reading Threads post..." });
         const { code, items } = await core.getThreadsMedia(job.url);
-        await mkdir(outDir, { recursive: true });
+        await mkdir(job.outDir, { recursive: true });
         job.title = `Threads ${code}`;
         for (const [i, it] of items.entries()) {
             set(job, { message: items.length > 1 ? `Downloading ${i + 1} of ${items.length}...` : "Downloading...", progress: Math.round(i / items.length * 100) });
             const res = await core.fetchRetry(it.url, { headers: { "user-agent": core.UA }, signal: job.abort.signal });
             const buf = Buffer.from(await res.arrayBuffer());
-            const file = join(outDir, `threads_${code}${items.length > 1 ? `_${i + 1}` : ""}.${it.ext}`);
+            const file = join(job.outDir, `threads_${code}${items.length > 1 ? `_${i + 1}` : ""}.${it.ext}`);
             await writeFile(file, buf);
             job.file = file;
         }
@@ -50,7 +51,7 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
         const ff = await tools.ensureFfmpeg(note, p => set(job, { progress: p }));
         const deno = isYoutube(job.url) && await tools.ensureDeno(note, p => set(job, { progress: p }));
         set(job, { progress: 0, message: "Starting..." });
-        await mkdir(outDir, { recursive: true });
+        await mkdir(job.outDir, { recursive: true });
 
         const args = [
             job.playlist ? "--yes-playlist" : "--no-playlist", "--newline", "--no-warnings", "--progress",
@@ -58,7 +59,7 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
             "--print", "before_dl:TITLE %(title)s",
             "--print", "before_dl:ITEM %(playlist_index|)s/%(n_entries|)s %(playlist_title|)s",
             "--print", "after_move:FILE %(filepath)s",
-            "-P", outDir, "--ffmpeg-location", tools.exeDir,
+            "-P", job.outDir, "--ffmpeg-location", tools.exeDir,
             "-o", job.playlist
                 ? "%(playlist_title,extractor)s/%(playlist_index|)s%(playlist_index& - |)s%(title).100B [%(id)s].%(ext)s"
                 : "%(extractor)s_%(id)s.%(ext)s",
@@ -137,7 +138,7 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
         add({ url, kind = "video", quality = "best", cookies = "auto", playlist = false }) {
             url = String(url || "").trim();
             if (!/^https?:\/\//i.test(url)) throw new Error("That doesn't look like a link.");
-            const job = { id: ++seq, url, kind, quality, cookies: String(cookies), playlist: !!playlist, status: "queued", progress: 0, message: "Queued", title: url, file: null, abort: new AbortController() };
+            const job = { id: ++seq, outDir: typeof outDir === "function" ? outDir() : outDir, url, kind, quality, cookies: String(cookies), playlist: !!playlist, status: "queued", progress: 0, message: "Queued", title: url, file: null, abort: new AbortController() };
             jobs.set(job.id, job);
             onChange(job);
             (isThreads(url) ? runThreads : runYtdlp)(job).catch(e => {

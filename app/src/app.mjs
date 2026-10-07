@@ -2,7 +2,7 @@
 //   savetool.exe                  -> opens the web UI in your browser
 //   savetool.exe <link> [folder]  -> command line download
 //   savetool.exe update           -> update yt-dlp
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { spawn } from "node:child_process";
@@ -15,6 +15,12 @@ import { startServer, PORT } from "./server.mjs";
 const exeDir = dirname(process.execPath.toLowerCase().endsWith("node.exe") ? process.argv[1] : process.execPath);
 const outDirDefault = join(homedir(), "Downloads", "SaveTool");
 const tools = makeTools(exeDir);
+
+// saved settings (next to the exe): currently only the download folder
+const settingsFile = join(exeDir, "settings.json");
+let outDir = outDirDefault;
+try { const s = JSON.parse(readFileSync(settingsFile, "utf8")); if (typeof s.outDir === "string" && s.outDir) outDir = s.outDir; } catch {}
+const setOutDir = dir => { outDir = dir; try { writeFileSync(settingsFile, JSON.stringify({ outDir })); } catch {} };
 
 // A fixed core.mjs placed next to the exe overrides the built-in Threads extractor (no rebuild needed).
 let coreCache;
@@ -54,10 +60,10 @@ async function main() {
     }
 
     // UI mode
-    const jobs = makeJobs({ tools, loadCore, outDir: outDirDefault });
+    const jobs = makeJobs({ tools, loadCore, outDir: () => outDir });
     let url, already = false;
     try {
-        url = await startServer({ jobs, tools, outDir: outDirDefault, version: core.VERSION, source, onIdleExit: () => process.exit(0) });
+        url = await startServer({ jobs, tools, getOutDir: () => outDir, setOutDir, version: core.VERSION, source, onIdleExit: () => process.exit(0) });
     } catch (e) {
         if (e.code !== "EADDRINUSE") throw e;
         url = `http://127.0.0.1:${PORT}/`; already = true; // already running: just bring up its page

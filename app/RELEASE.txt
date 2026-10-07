@@ -2,7 +2,8 @@ Save Tool
 ---------
 1. Double-click savetool.exe. Your browser opens the Save Tool page.
 2. Paste one or more links (Threads, YouTube, Instagram, Facebook, TikTok, X...), click Download.
-   Files go to  Downloads\SaveTool   (button "Open folder" on the page).
+   Files go to  Downloads\SaveTool   (change it with "Change folder" on the page).
+   Click "Add shortcut" to find Save Tool on your Desktop / Start menu next time.
 3. Close the black window to quit.
 
 First use of a non-Threads link downloads yt-dlp and ffmpeg (~130 MB total, once) next to the exe.

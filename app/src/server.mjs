@@ -8,7 +8,49 @@ import html from "./ui.html";
 
 export const PORT = 47821;
 
-export function startServer({ jobs, tools, outDir, version, source, onIdleExit }) {
+const ps = (script, env = {}) => new Promise(resolve => {
+    const p = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script],
+        { windowsHide: true, env: { ...process.env, ...env } });
+    let out = "";
+    p.stdout.setEncoding("utf8").on("data", d => out += d);
+    p.on("error", () => resolve(""));
+    p.on("close", () => resolve(out.trim()));
+});
+
+// Windows folder picker; resolves the chosen path, or "" if cancelled
+const chooseFolder = start => ps(`
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+Add-Type -AssemblyName System.Windows.Forms
+$owner = New-Object System.Windows.Forms.Form
+$owner.TopMost = $true; $owner.ShowInTaskbar = $false; $owner.Opacity = 0
+$owner.StartPosition = 'CenterScreen'; $owner.Show(); $owner.Activate()
+$d = New-Object System.Windows.Forms.FolderBrowserDialog
+$d.Description = 'Choose where to save downloads'
+$d.ShowNewFolderButton = $true
+if ($env:ST_START -and (Test-Path -LiteralPath $env:ST_START)) { $d.SelectedPath = $env:ST_START }
+if ($d.ShowDialog($owner) -eq 'OK') { [Console]::Out.Write($d.SelectedPath) }
+$owner.Close()`, { ST_START: start });
+
+// Desktop + Start menu shortcuts (Start menu entries show up in Windows search)
+async function createShortcuts() {
+    const out = await ps(`
+$exe = $env:ST_EXE
+$shell = New-Object -ComObject WScript.Shell
+$made = @()
+foreach ($dir in @([Environment]::GetFolderPath('Desktop'), (Join-Path $env:APPDATA 'Microsoft/Windows/Start Menu/Programs'))) {
+  try {
+    $lnk = $shell.CreateShortcut((Join-Path $dir 'Save Tool.lnk'))
+    $lnk.TargetPath = $exe; $lnk.WorkingDirectory = Split-Path $exe
+    $lnk.IconLocation = "$exe,0"; $lnk.Description = 'Save Tool - download videos'
+    $lnk.Save(); $made += $dir
+  } catch {}
+}
+$made.Count`, { ST_EXE: process.execPath });
+    if (out !== "2") throw new Error("Could not create the shortcuts.");
+    return "Added Save Tool to your Desktop and Start menu.";
+}
+
+export function startServer({ jobs, tools, getOutDir, setOutDir, version, source, onIdleExit }) {
     const token = randomBytes(16).toString("hex");
     let lastPing = 0, seen = false;
 
@@ -30,7 +72,7 @@ export function startServer({ jobs, tools, outDir, version, source, onIdleExit }
         try {
             if (req.method === "GET" && url.pathname === "/api/state") {
                 seen = true; lastPing = Date.now();
-                return json(res, 200, { jobs: jobs.list(), outDir, version, source, tools: { ytdlp: tools.hasYtdlp(), ffmpeg: tools.hasFfmpeg() } });
+                return json(res, 200, { jobs: jobs.list(), outDir: getOutDir(), version, source, tools: { ytdlp: tools.hasYtdlp(), ffmpeg: tools.hasFfmpeg() } });
             }
             if (req.method !== "POST") { res.writeHead(405); return res.end(); }
             const body = await readBody(req);
@@ -48,10 +90,16 @@ export function startServer({ jobs, tools, outDir, version, source, onIdleExit }
                 if (m[2] === "cancel") jobs.cancel(id);
                 else if (m[2] === "remove") jobs.remove(id);
                 else if (job.file && existsSync(job.file)) explorer([`/select,${job.file}`]);
-                else explorer([outDir]);
+                else explorer([job.outDir]);
                 return json(res, 200, { ok: true });
             }
-            if (url.pathname === "/api/folder") { explorer([outDir]); return json(res, 200, { ok: true }); }
+            if (url.pathname === "/api/folder") { explorer([getOutDir()]); return json(res, 200, { ok: true }); }
+            if (url.pathname === "/api/choose-folder") {
+                const picked = await chooseFolder(getOutDir());
+                if (picked) setOutDir(picked);
+                return json(res, 200, { outDir: getOutDir(), changed: !!picked });
+            }
+            if (url.pathname === "/api/shortcut") return json(res, 200, { message: await createShortcuts() });
             if (url.pathname === "/api/update") {
                 return json(res, 200, { message: (await tools.update()).message });
             }
