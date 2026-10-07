@@ -1,6 +1,6 @@
 // Threads extractor core. This is the file that breaks when Meta changes the page:
 // edit/replace it (or drop a fixed copy next to the exe as core.mjs) to update.
-export const VERSION = "1.4.0";
+export const VERSION = "1.4.1";
 export const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36";
 const pageHeaders = {
     "user-agent": UA,
@@ -74,10 +74,15 @@ export async function getThreadsMedia(input) {
 
     if (!post) throw new Error("post not found (private, deleted, or Meta changed the page)");
 
-    const nodes = post.carousel_media?.length ? post.carousel_media : [post];
-    const items = nodes.map(pickMedia).filter(Boolean);
-    if (!items.length) throw new Error("post has no downloadable video or photo");
-
-    return { code, user: post.user?.username, items };
+    // A post with no media of its own may quote / repost / link another post that has it.
+    const info = post.text_post_app_info || {};
+    const sources = [post, info.share_info?.quoted_attachment_post, info.share_info?.quoted_post,
+        info.share_info?.reposted_post, info.linked_inline_media].filter(Boolean);
+    for (const src of sources) {
+        const nodes = src.carousel_media?.length ? src.carousel_media : [src];
+        const items = nodes.map(pickMedia).filter(Boolean);
+        if (items.length) return { code, user: src.user?.username || post.user?.username, items, fromQuote: src !== post };
+    }
+    throw new Error("post has no downloadable video or photo");
 }
 
