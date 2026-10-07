@@ -74,7 +74,15 @@ footer { margin-top: 26px; color: var(--muted); font-size: 12px; display: flex; 
       <label id="qwrap">Quality
         <select id="quality"><option value="best">Best available</option><option value="1080">Up to 1080p</option><option value="720">Up to 720p</option><option value="480">Up to 480p</option></select>
       </label>
-      <span>Threads posts are always saved as-is.</span>
+      <label>Login
+        <select id="cookies" title="Needed for private, age-restricted or login-only videos">
+          <option value="auto">cookies.txt if present</option><option value="none">None</option>
+          <option value="chrome">Chrome</option><option value="edge">Edge</option>
+          <option value="firefox">Firefox</option><option value="brave">Brave</option>
+        </select>
+      </label>
+      <label><input type="checkbox" id="playlist"> Whole playlist</label>
+      <span>Threads posts are always saved as-is. For Chrome/Edge, close the browser first.</span>
     </div>
   </section>
 
@@ -139,7 +147,7 @@ async function start() {
   const url = $("url").value.trim();
   if (!url) { toast("Paste a link first."); return; }
   try {
-    await api("jobs", { url, kind: $("kind").value, quality: $("quality").value });
+    await api("jobs", { url, kind: $("kind").value, quality: $("quality").value, cookies: $("cookies").value, playlist: $("playlist").checked });
     $("url").value = ""; poll();
   } catch (e) { toast(e.message); }
 }

@@ -38,7 +38,7 @@ export function startServer({ jobs, tools, outDir, version, source, onIdleExit }
             if (url.pathname === "/api/jobs") {
                 const urls = String(body.url || "").split(/\s+/).filter(Boolean);
                 if (!urls.length) return json(res, 400, { error: "Paste a link first." });
-                for (const u of urls) jobs.add({ url: u, kind: body.kind, quality: body.quality });
+                for (const u of urls) jobs.add({ url: u, kind: body.kind, quality: body.quality, cookies: body.cookies, playlist: body.playlist });
                 return json(res, 200, { ok: true });
             }
             const m = url.pathname.match(/^\/api\/jobs\/(\d+)\/(cancel|remove|open)$/);
@@ -53,10 +53,7 @@ export function startServer({ jobs, tools, outDir, version, source, onIdleExit }
             }
             if (url.pathname === "/api/folder") { explorer([outDir]); return json(res, 200, { ok: true }); }
             if (url.pathname === "/api/update") {
-                await tools.ensureYtdlp();
-                let out = "";
-                await new Promise(r => { const p = tools.spawnYtdlp(["-U"]); p.stdout.on("data", d => out += d); p.stderr.on("data", d => out += d); p.on("close", r); p.on("error", r); });
-                return json(res, 200, { message: out.trim().split("\n").pop() || "Done" });
+                return json(res, 200, { message: (await tools.update()).message });
             }
             res.writeHead(404); res.end();
         } catch (e) { json(res, 500, { error: e.message }); }

@@ -62,6 +62,7 @@ async function main() {
         if (e.code !== "EADDRINUSE") throw e;
         url = `http://127.0.0.1:${PORT}/`; already = true; // already running: just bring up its page
     }
+    if (!already && tools.updateDue()) tools.update().catch(() => {}); // daily background yt-dlp update
     console.log(`Save Tool is running at ${url}\nKeep this window open while downloading; close it to quit.`);
     if (!process.env.SAVETOOL_NO_OPEN) spawn("cmd", ["/c", "start", "", url], { stdio: "ignore", detached: true, windowsHide: true }).unref();
     if (already) setTimeout(() => process.exit(0), 1500);
