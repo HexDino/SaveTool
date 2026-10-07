@@ -89,10 +89,11 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
         if (r.code !== 0 && !r.saved) {
             let hint = r.tail.at(-1)?.replace(/^ERROR:\s*(\[[^\]]+\]\s*)?/, "") || "download failed";
             hint = hint.slice(0, 220);
-            const extra = /cookie/i.test(r.tail.join(" "))
-                ? "Close the browser and try again (Chrome/Edge lock their cookie file), or pick Firefox / cookies.txt."
-                : "private videos need login cookies (pick your browser in the Login option).";
-            throw new Error(`${hint} - ${extra}`);
+            const all = r.tail.join(" ");
+            const extra = /cookie/i.test(all) ? "Close the browser and try again (Chrome/Edge lock their cookie file), or pick Firefox / cookies.txt."
+                : /log ?in|sign ?in|private|empty media|age|restricted|authenticat/i.test(all) ? "this one probably needs login: pick your browser in the Login option."
+                : "";
+            throw new Error(extra ? `${hint} - ${extra}` : hint);
         }
         const partial = r.code !== 0;
         set(job, {
@@ -154,6 +155,13 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
             set(j, { status: "cancelled", message: "Cancelled" });
         },
         remove(id) { jobs.delete(id); },
+        // run the same link again with the same options (replaces the failed / cancelled entry)
+        retry(id) {
+            const j = jobs.get(id);
+            if (!j || ["queued", "running"].includes(j.status)) return;
+            jobs.delete(id);
+            return this.add({ url: j.url, kind: j.kind, quality: j.quality, cookies: j.cookies, playlist: j.playlist });
+        },
         get: id => jobs.get(id),
         list: () => [...jobs.values()].reverse().map(({ abort, kill, ...j }) => j),
         active: () => [...jobs.values()].some(j => j.status === "queued" || j.status === "running"),

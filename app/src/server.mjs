@@ -83,11 +83,12 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
                 for (const u of urls) jobs.add({ url: u, kind: body.kind, quality: body.quality, cookies: body.cookies, playlist: body.playlist });
                 return json(res, 200, { ok: true });
             }
-            const m = url.pathname.match(/^\/api\/jobs\/(\d+)\/(cancel|remove|open)$/);
+            const m = url.pathname.match(/^\/api\/jobs\/(\d+)\/(cancel|remove|open|retry)$/);
             if (m) {
                 const id = +m[1], job = jobs.get(id);
                 if (!job) return json(res, 404, { error: "no such job" });
                 if (m[2] === "cancel") jobs.cancel(id);
+                else if (m[2] === "retry") jobs.retry(id);
                 else if (m[2] === "remove") jobs.remove(id);
                 else if (job.file && existsSync(job.file)) explorer([`/select,${job.file}`]);
                 else explorer([job.outDir]);

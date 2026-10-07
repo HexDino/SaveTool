@@ -140,6 +140,7 @@ No browser extension, Python or install needed. Download `savetool.exe` from the
 Works with **Threads, YouTube, Instagram, Facebook, TikTok, X** and other sites yt-dlp supports. Pick video (MP4) or audio (MP3) and a quality cap, paste several links at once, watch progress, cancel, and open the file or folder from the page.
 
 - Pick the download folder with **Change folder** (remembered in `settings.json` next to the exe). Click **Add shortcut** to put Save Tool on your Desktop and Start menu (search "Save Tool").
+- Failed downloads have a **Retry** button; your options (format, quality, login, playlist) are remembered; the page works on narrow windows too.
 - Command line: `savetool.exe <link> [folder]`
 - First use of a non-Threads link downloads yt-dlp (~18 MB) and ffmpeg (~115 MB) next to the exe, once. YouTube links also download a small JavaScript runtime, deno (~40 MB), once.
 - Stopped working? Click **Update** on the page (updates yt-dlp). For Threads, put the newer `core.mjs` from the release next to the exe.

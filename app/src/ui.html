@@ -70,6 +70,19 @@ footer .spacer { flex: 1; }
 #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 12px; font-size: 13.5px; opacity: 0; pointer-events: none; transition: opacity .2s; max-width: 90vw; }
 #toast.show { opacity: .96; }
 
+.setup { margin: 0 0 16px; padding: 12px 16px; border-radius: 14px; box-shadow: none; display: grid; gap: 8px; }
+.setup[hidden] { display: none; }
+.setup b { font-weight: 600; }
+.setup .msg { color: var(--muted); font-size: 13px; }
+.setup .bar > i.indet { width: 40% !important; animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
+.chip { flex: none; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--soft); border-radius: 999px; padding: 2px 9px; }
+.job .file { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.btn-icon { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 10px; color: var(--muted); }
+.tools .sep { flex: 1; }
+.fine { color: var(--muted); font-size: 12.5px; margin: 8px 6px 0; }
+.fine[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .bar > i, #toast, .setup .bar > i.indet { transition: none; animation: none; } }
 @media (max-width: 600px) {
   main { padding: 26px 12px 48px; }
   header { margin-bottom: 20px; }
@@ -78,7 +91,11 @@ footer .spacer { flex: 1; }
   header .sub { font-size: 13.5px; }
   .box { padding: 12px 12px 10px; border-radius: 18px; }
   .tools { gap: 6px; }
-  .pill { font-size: 12.5px; }
+  .pill { font-size: 12.5px; flex: 1 1 calc(50% - 6px); justify-content: space-between; min-width: 0; }
+  .pill select { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+  .pill.check { flex: 1 1 calc(50% - 6px); justify-content: flex-start; }
+  .tools .sep { display: none; }
+  .tools .btn-icon { margin-left: auto; }
   .where { flex-wrap: wrap; gap: 6px 8px; padding: 10px 12px; }
   .where .path { order: 3; flex: 1 0 100%; direction: ltr; }
   .where .lbl { flex: 1; }
@@ -90,7 +107,8 @@ footer .spacer { flex: 1; }
   footer .spacer { display: none; }
 }
 @media (max-width: 380px) {
-  .pill select { max-width: 120px; }
+  .pill { flex-basis: 100%; }
+  .pill.check { flex-basis: 100%; }
   h2 { font-size: 17px; }
 }
 </style>
@@ -102,6 +120,12 @@ footer .spacer { flex: 1; }
     <h1>Save Tool</h1>
     <div class="sub">Save videos from Threads, YouTube, Instagram, Facebook, TikTok, X and more</div>
   </header>
+
+  <section class="card setup" id="setup" hidden aria-live="polite">
+    <div><b>Getting ready</b> <span style="color:var(--muted)">- first run only, this can take a minute</span></div>
+    <div class="bar"><i id="setupbar"></i></div>
+    <div class="msg" id="setupmsg"></div>
+  </section>
 
   <section class="card box">
     <textarea id="url" rows="2" placeholder="Paste one or more links here (one per line)" autofocus></textarea>
@@ -120,10 +144,14 @@ footer .spacer { flex: 1; }
         </select>
       </label>
       <label class="pill check" title="If the link is a playlist, save every video in it into its own folder. Off = just the one video."><input type="checkbox" id="playlist"> Whole playlist</label>
-      <span class="spacer"></span>
+      <span class="sep"></span>
+      <span class="actions-end" style="display:contents">
+      <button class="btn-icon" id="paste" title="Paste link from clipboard" aria-label="Paste link from clipboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2"/></svg></button>
       <button class="send" id="go" title="Download" aria-label="Download"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-5-5m5 5l5-5M5 20h14"/></svg></button>
+      </span>
     </div>
   </section>
+  <div class="fine" id="plhint" hidden>Whole playlist: every video of a playlist link is saved into its own folder. A single video link saves just that video.</div>
   <div class="hint">Threads posts are always saved as-is (a quote post saves the video it quotes). For Chrome/Edge login, close the browser first.</div>
 
   <section class="card where">
@@ -168,42 +196,132 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 3500);
 }
 
-function render(s) {
-  $("where").textContent = s.outDir; $("where").title = s.outDir;
-  $("toolinfo").textContent = `v${s.version}` + (s.setup.busy ? ` · ${s.setup.message} (first run only)` : s.setup.warning ? ` · ${s.setup.warning}` : "");
-  const box = $("jobs");
-  if (!s.jobs.length) { box.innerHTML = '<div class="empty">Nothing yet. Paste a link above.</div>'; return; }
-  // keep existing nodes where possible so buttons don't flicker while polling
-  box.innerHTML = s.jobs.map(j => {
-    const live = j.status === "queued" || j.status === "running";
-    return `<div class="card job ${j.status}">
-      <div class="top"><div class="title" title="${esc(j.url)}">${esc(j.title)}</div>
-        <div class="actions">
-          ${j.status === "done" ? `<button class="small" data-act="open" data-id="${j.id}">Show file</button>` : ""}
-          ${live ? `<button class="small" data-act="cancel" data-id="${j.id}">Cancel</button>` : `<button class="small" data-act="remove" data-id="${j.id}">Remove</button>`}
-        </div></div>
-      <div class="bar"><i style="width:${j.status === "done" ? 100 : j.progress}%"></i></div>
-      <div class="msg">${esc(j.message)}${live && j.progress ? ` · ${j.progress}%` : ""}</div>
-    </div>`;
-  }).join("");
+// ---- remember the user's choices
+const OPTS = ["kind", "quality", "cookies"];
+function loadOpts() {
+  try {
+    const o = JSON.parse(localStorage.getItem("savetool.opts") || "{}");
+    for (const k of OPTS) if (o[k] && [...$(k).options].some(x => x.value === o[k])) $(k).value = o[k];
+    $("playlist").checked = !!o.playlist;
+  } catch {}
+}
+function saveOpts() {
+  try { localStorage.setItem("savetool.opts", JSON.stringify({ ...Object.fromEntries(OPTS.map(k => [k, $(k).value])), playlist: $("playlist").checked })); } catch {}
+}
+function syncOpts() {
+  const audio = $("kind").value === "audio";
+  $("quality").disabled = audio; $("qwrap").style.opacity = audio ? .45 : 1;
+  $("plhint").hidden = !$("playlist").checked;
 }
 
+const SITES = [[/youtube|youtu\.be/, "YouTube"], [/instagram/, "Instagram"], [/facebook|fb\.watch/, "Facebook"], [/threads/, "Threads"],
+  [/tiktok/, "TikTok"], [/twitter|x\.com/, "X"], [/vimeo/, "Vimeo"], [/reddit/, "Reddit"]];
+function site(url) {
+  try { const h = new URL(url).hostname; return (SITES.find(([re]) => re.test(h)) || [0, h.replace(/^www\./, "")])[1]; } catch { return ""; }
+}
+const baseName = p => String(p || "").split(/[\\/]/).pop();
+
+// ---- job list: update existing nodes in place so buttons never flicker or lose hover while polling
+const nodes = new Map();
+function buildJob(j) {
+  const el = document.createElement("div");
+  el.dataset.id = j.id;
+  el.innerHTML = `<div class="top"><span class="chip"></span><div class="title"></div><div class="actions"></div></div>
+    <div class="bar"><i></i></div><div class="msg"></div><div class="file" hidden></div>`;
+  return el;
+}
+function updateJob(el, j) {
+  const live = j.status === "queued" || j.status === "running";
+  el.className = `card job ${j.status}`;
+  const set = (sel, text) => { const n = el.querySelector(sel); if (n.textContent !== text) n.textContent = text; return n; };
+  set(".chip", site(j.url));
+  set(".title", j.title).title = j.url;
+  el.querySelector(".bar > i").style.width = (j.status === "done" ? 100 : j.progress) + "%";
+  set(".msg", j.message + (live && j.progress ? ` · ${j.progress}%` : ""));
+  const f = el.querySelector(".file");
+  f.hidden = j.status !== "done" || !j.file;
+  if (!f.hidden) { f.textContent = baseName(j.file); f.title = j.file; }
+  const sig = j.status;
+  const act = el.querySelector(".actions");
+  if (act.dataset.sig !== sig) {
+    act.dataset.sig = sig;
+    const b = (a, t) => `<button class="small" data-act="${a}" data-id="${j.id}">${t}</button>`;
+    act.innerHTML = (j.status === "done" ? b("open", "Show file") : "")
+      + (j.status === "error" || j.status === "cancelled" ? b("retry", "Retry") : "")
+      + (live ? b("cancel", "Cancel") : b("remove", "Remove"));
+  }
+}
+
+let lastTitle = "";
+function render(s) {
+  $("where").textContent = s.outDir; $("where").title = s.outDir;
+
+  const st = s.setup;
+  $("setup").hidden = !st.busy;
+  if (st.busy) {
+    const pct = (st.message.match(/(\d+)%/) || [])[1];
+    $("setupmsg").textContent = st.message.replace(/ \d+%$/, "").replace(/ \(first run only[^)]*\)/, "");
+    const bar = $("setupbar");
+    bar.classList.toggle("indet", pct === undefined);
+    bar.style.width = pct === undefined ? "" : pct + "%";
+  }
+  $("toolinfo").textContent = `v${s.version}` + (!st.busy && st.warning ? ` · ${st.warning}` : "");
+
+  const box = $("jobs");
+  if (!s.jobs.length) {
+    nodes.clear();
+    if (!box.querySelector(".empty")) box.innerHTML = '<div class="empty">Nothing yet. Paste a link above.</div>';
+  } else {
+    box.querySelector(".empty")?.remove();
+    const seen = new Set();
+    s.jobs.forEach((j, i) => {
+      seen.add(j.id);
+      let el = nodes.get(j.id);
+      if (!el) { el = buildJob(j); nodes.set(j.id, el); }
+      updateJob(el, j);
+      if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
+    });
+    for (const [id, el] of nodes) if (!seen.has(id)) { el.remove(); nodes.delete(id); }
+  }
+
+  const active = s.jobs.filter(j => j.status === "queued" || j.status === "running").length;
+  const title = active ? `(${active}) Save Tool` : "Save Tool";
+  if (title !== lastTitle) document.title = lastTitle = title;
+  $("clear").hidden = !s.jobs.some(j => !["queued", "running"].includes(j.status));
+}
+
+let failures = 0;
 async function poll() {
-  try { render(await api("state")); } catch { $("toolinfo").textContent = "Save Tool app was closed. Start savetool.exe again."; }
+  try { render(await api("state")); failures = 0; }
+  catch { if (++failures > 2) $("toolinfo").textContent = "Save Tool app was closed. Start savetool.exe again."; }
 }
 
 async function start() {
   const url = $("url").value.trim();
-  if (!url) { toast("Paste a link first."); return; }
+  if (!url) { toast("Paste a link first."); $("url").focus(); return; }
+  if (!/https?:\/\//i.test(url)) { toast("That doesn't look like a link (it should start with http)."); return; }
+  $("go").disabled = true;
   try {
     await api("jobs", { url, kind: $("kind").value, quality: $("quality").value, cookies: $("cookies").value, playlist: $("playlist").checked });
-    $("url").value = ""; poll();
+    $("url").value = ""; grow(); poll();
   } catch (e) { toast(e.message); }
+  $("go").disabled = false; $("url").focus();
 }
 
+function grow() { const t = $("url"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 200) + "px"; }
+
 $("go").onclick = start;
+$("url").addEventListener("input", grow);
 $("url").addEventListener("keydown", e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); start(); } });
-$("kind").onchange = () => { $("qwrap").style.opacity = $("kind").value === "audio" ? .4 : 1; };
+$("paste").onclick = async () => {
+  try {
+    const t = (await navigator.clipboard.readText()).trim();
+    if (!t) return toast("The clipboard is empty.");
+    const cur = $("url").value.trim();
+    $("url").value = cur ? cur + "\n" + t : t; grow(); $("url").focus();
+  } catch { toast("Can't read the clipboard here - press Ctrl+V in the box instead."); $("url").focus(); }
+};
+for (const k of [...OPTS, "playlist"]) $(k).addEventListener("change", () => { saveOpts(); syncOpts(); });
 $("folder").onclick = () => api("folder", {});
 $("choose").onclick = async () => {
   $("choose").disabled = true; toast("Choose a folder in the window that opened...");
@@ -225,9 +343,12 @@ $("update").onclick = async () => {
 };
 $("jobs").onclick = async e => {
   const b = e.target.closest("button[data-act]"); if (!b) return;
-  await api(`jobs/${b.dataset.id}/${b.dataset.act}`, {}); poll();
+  b.disabled = true;
+  try { await api(`jobs/${b.dataset.id}/${b.dataset.act}`, {}); } catch (err) { toast(err.message); }
+  poll();
 };
 
+loadOpts(); syncOpts(); grow();
 poll(); setInterval(poll, 900);
 </script>
 </body>
