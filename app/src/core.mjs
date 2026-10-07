@@ -1,6 +1,6 @@
 // Threads extractor core. This is the file that breaks when Meta changes the page:
 // edit/replace it (or drop a fixed copy next to the exe as core.mjs) to update.
-export const VERSION = "1.2.0";
+export const VERSION = "1.3.0";
 export const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36";
 const pageHeaders = {
     "user-agent": UA,
