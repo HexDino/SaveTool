@@ -146,7 +146,7 @@ function toast(msg) {
 
 function render(s) {
   $("where").textContent = s.outDir; $("where").title = s.outDir;
-  $("toolinfo").textContent = `v${s.version} · yt-dlp ${s.tools.ytdlp ? "ready" : "downloads on first use"} · ffmpeg ${s.tools.ffmpeg ? "ready" : "downloads on first use"}`;
+  $("toolinfo").textContent = `v${s.version}` + (s.setup.busy ? ` · ${s.setup.message} (first run only)` : s.setup.warning ? ` · ${s.setup.warning}` : "");
   const box = $("jobs");
   if (!s.jobs.length) { box.innerHTML = '<div class="empty">Nothing yet. Paste a link above.</div>'; return; }
   // keep existing nodes where possible so buttons don't flicker while polling

@@ -72,7 +72,7 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
         try {
             if (req.method === "GET" && url.pathname === "/api/state") {
                 seen = true; lastPing = Date.now();
-                return json(res, 200, { jobs: jobs.list(), outDir: getOutDir(), version, source, tools: { ytdlp: tools.hasYtdlp(), ffmpeg: tools.hasFfmpeg() } });
+                return json(res, 200, { jobs: jobs.list(), outDir: getOutDir(), version, source, setup: tools.setup });
             }
             if (req.method !== "POST") { res.writeHead(405); return res.end(); }
             const body = await readBody(req);

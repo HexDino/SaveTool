@@ -101,7 +101,23 @@ export function makeTools(exeDir) {
         }
     }
 
+    // Set everything up in the background at startup so the user never has to think about it.
+    const setup = { busy: false, message: "", warning: "" };
+    async function prepare() {
+        if (setup.busy) return;
+        Object.assign(setup, { busy: true, message: "Setting up yt-dlp...", warning: "" });
+        const note = m => { setup.message = m; if (/unavailable|could not/i.test(m)) setup.warning = m; };
+        try {
+            await ensureYtdlp(note);
+            await ensureFfmpeg(note, p => setup.message = `Setting up ffmpeg... ${p}%`);
+            await ensureDeno(note, p => setup.message = `Setting up YouTube support... ${p}%`);
+        } catch (e) {
+            setup.warning = `Setup failed (${e.message}). Check your internet connection - it will retry when you download.`;
+        } finally { setup.busy = false; }
+    }
+
     return {
+        prepare, setup,
         ensureDeno, DENO,
         update, updateDue, pending: () => updP || Promise.resolve(),
         exeDir, YTDLP, FFMPEG, ensureYtdlp, ensureFfmpeg,
