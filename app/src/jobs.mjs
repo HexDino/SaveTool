@@ -8,7 +8,8 @@ const FORMATS = {
     best: "bv*+ba/b",
     "1080": "bv*[height<=1080]+ba/b[height<=1080]/bv*+ba/b",
     "720": "bv*[height<=720]+ba/b[height<=720]/bv*+ba/b",
-    "480": "bv*[height<=480]+ba/b[height<=480]/bv*+ba/b",
+    // Facebook often offers only "sd"/"hd" with no height, so a height cap cannot match: use sd for the low cap
+    "480": "bv*[height<=480]+ba/b[height<=480]/b[format_id=sd]/bv*+ba/b",
 };
 
 // browsers yt-dlp can read login cookies from
