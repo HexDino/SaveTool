@@ -2,6 +2,7 @@
 // per-run token (a random page on the internet can reach localhost, so the token + Host check
 // matter). "Use on phone" opens a second server on the LAN (same token), so a phone on the
 // same Wi-Fi can open the same page; downloads still land on this PC.
+// "Open to internet" (and SAVETOOL_PUBLIC=1 behind a Cloudflare Worker) expose it beyond the LAN.
 import http from "node:http";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
@@ -75,6 +76,9 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
     const readBody = req => new Promise(r => { let s = ""; req.on("data", c => s += c); req.on("end", () => { try { r(JSON.parse(s || "{}")); } catch { r({}); } }); });
     const explorer = args => spawn("explorer.exe", args, { detached: true, stdio: "ignore" }).unref();
 
+    // hosts the main server answers on; the tunnel host is added later by /api/tunnel
+    const localHosts = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
+
     // opened on demand by /api/phone: same page + token, but reachable from the Wi-Fi
     let phoneP;
     const openPhoneServer = () => phoneP ??= (async () => {
@@ -86,9 +90,39 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
         return { server: s, urls: ips.map(ip => `http://${ip}:${PHONE_PORT}/`) };
     })().catch(e => { phoneP = null; throw e; });
 
+    // opened on demand by /api/tunnel: a free, temporary cloudflare tunnel so the page works
+    // from anywhere (not just the same Wi-Fi). Whoever has the link has the token - link = key.
+    let tunnelP, tunnelChild;
+    const CLOUDFLARED = process.env.CLOUDFLARED || "cloudflared";
+    const openTunnel = () => tunnelP ??= (async () => {
+        const child = spawn(CLOUDFLARED, ["tunnel", "--no-autoupdate", "--url", `http://127.0.0.1:${PORT}`], { windowsHide: true });
+        tunnelChild = child;
+        process.on("exit", () => { try { child.kill(); } catch {} });
+        const out = new Promise(resolve => {
+            let buf = "";
+            const onLine = d => {
+                buf += d;
+                const m = buf.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+                if (m) resolve(m[0]);
+            };
+            child.stdout.setEncoding("utf8").on("data", onLine);
+            child.stderr.setEncoding("utf8").on("data", onLine);
+            child.on("error", () => resolve(null));
+            child.on("close", () => resolve(null));
+            setTimeout(() => resolve(null), 30000);
+        });
+        const publicUrl = await out;
+        if (!publicUrl) { tunnelP = null; tunnelChild = null; throw new Error("could not create the tunnel - is cloudflared installed?"); }
+        localHosts.add(new URL(publicUrl).host); // the main server now accepts the tunnel host
+        return { url: publicUrl };
+    })().catch(e => { tunnelP = null; throw e; });
+
     // one request handler shared by both servers; allowedHosts differs per server
+    // SAVETOOL_PUBLIC=1 skips the Host check (used when the app sits behind a Cloudflare Worker/tunnel);
+    // the per-run token still guards every /api/* call.
+    const publicMode = !!process.env.SAVETOOL_PUBLIC;
     const makeHandler = allowedHosts => async (req, res) => {
-        if (!allowedHosts.has(req.headers.host || "")) { res.writeHead(403); return res.end(); }
+        if (!publicMode && !allowedHosts.has(req.headers.host || "")) { res.writeHead(403); return res.end(); }
         const url = new URL(req.url, "http://x");
 
         // browser downloads cannot send custom headers, so the file route takes the token in the query
@@ -150,11 +184,15 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
                 const { urls } = await openPhoneServer();
                 return json(res, 200, { url: urls[0], urls });
             }
+            if (url.pathname === "/api/tunnel") {
+                const { url: publicUrl } = await openTunnel();
+                return json(res, 200, { url: publicUrl });
+            }
             res.writeHead(404); res.end();
         } catch (e) { json(res, 500, { error: e.message }); }
     };
 
-    const server = http.createServer(makeHandler(new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`])));
+    const server = http.createServer(makeHandler(localHosts));
 
     // close itself a few minutes after the browser tab is gone (never during a download)
     setInterval(() => { if (seen && Date.now() - lastPing > 180000 && !jobs.active()) onIdleExit(); }, 10000).unref();

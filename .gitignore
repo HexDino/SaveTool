@@ -12,3 +12,6 @@ app/dist/
 
 # WorkBuddy AI workspace data
 .workbuddy-ai/
+
+# Cloudflare Worker (wrangler)
+.wrangler/

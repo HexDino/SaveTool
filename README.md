@@ -159,7 +159,26 @@ Works with **Threads, YouTube, Instagram, Facebook, TikTok, X** and other sites 
 - Private / age-restricted / login-only videos: set **Login** to your browser on the page (close Chrome/Edge first, they lock their cookie file), or export browser cookies as `cookies.txt` and put it next to the exe.
 - The page only listens on `127.0.0.1` and every request needs a per-run token, so other websites cannot drive it.
 
+### Use it from anywhere (phone on 4G, another laptop)
+
+The repo ships a Cloudflare Worker (`worker/`) that acts as the public front door for the app on your PC. It is a pure reverse proxy: the page, the API and file downloads all travel through a cloudflared tunnel back to `savetool` on your PC, so nothing is stored in the cloud.
+
+One-time setup:
+```bash
+npm install                 # wrangler
+npx wrangler deploy         # deploys the "savetool" Worker
+```
+
+Every time you want it online:
+```bash
+run-public.bat              # or: npm run public
+```
+That starts `savetoolw.exe` in public mode, opens a cloudflared tunnel, writes the tunnel URL into the Worker secret `BACKEND_ORIGIN`, and prints your public link (default `https://savetool.thanhhung33.workers.dev`). Keep the window open; Ctrl+C stops the tunnel and the app. If the PC is off, the Worker shows a friendly "Save Tool is not reachable" page.
+
+Security notes: the per-run token still guards every `/api/*` call (the page carries it), and `SAVETOOL_PUBLIC=1` (set by the launcher) makes the local server skip the Host check because the request now arrives via the tunnel. Treat the Worker URL as private.
+
 ### Project layout
 
 - `app/` — Save Tool. `app/src/`: `app.mjs` (entry), `server.mjs` + `ui.html` (web UI), `jobs.mjs` (download jobs), `tools.mjs` (yt-dlp/ffmpeg setup), `core.mjs` (Threads extractor, the file to fix when Threads changes). Build: `node app/build.mjs` (Node 24+) gives `app/dist/savetool.exe`.
+- `worker/` + `wrangler.jsonc` — the Cloudflare Worker front door (see "Use it from anywhere" above); `scripts/public.mjs` + `run-public.bat` start the app, the tunnel and the secret sync.
 - Repo root — the Chrome extension (below). It stays at the root because Chrome loads this folder and the native host is registered to it.

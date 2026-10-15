@@ -1,0 +1,15 @@
+{
+  "name": "savefrom",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Save Tool - local downloader app (app/) + the Cloudflare Worker front door (worker/)",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "public": "node scripts/public.mjs",
+    "tunnel": "node scripts/public.mjs --tunnel-only"
+  },
+  "devDependencies": {
+    "wrangler": "^4.118.0"
+  }
+}

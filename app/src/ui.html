@@ -168,6 +168,12 @@ footer .spacer { flex: 1; }
     <div class="msg">Files still save to this PC. Keep this page open. If none load, click Allow on the Windows firewall question, then press the button again.</div>
   </section>
 
+  <section class="card setup" id="tunnelpanel" hidden aria-live="polite" style="border-color:var(--accent)">
+    <div><b>Public link</b> <span style="color:var(--muted)">- works from anywhere</span></div>
+    <div class="msg" id="tunnelurl" style="font-size:15px;color:var(--text);word-break:break-all;padding:6px 0"></div>
+    <div class="msg" style="color:var(--err)">Anyone who has this link can use Save Tool on this PC and download its files - share it only with people you trust. The link changes every time you press the button.</div>
+  </section>
+
   <section class="card where">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
     <span class="lbl">Save to</span>
@@ -184,6 +190,7 @@ footer .spacer { flex: 1; }
     <span class="spacer"></span>
     <button class="small" id="shortcut" title="Add Save Tool to your Desktop and Start menu">Add shortcut</button>
     <button class="small" id="phone" title="Open the same page on a phone on your Wi-Fi">Use on phone</button>
+    <button class="small" id="tunnel" title="Create a temporary public link that works from anywhere">Open to internet</button>
     <button class="small" id="update" title="Update yt-dlp if a site stopped working">Update</button>
   </footer>
 </main>
@@ -374,6 +381,19 @@ $("phone").onclick = async () => {
     panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (e) { toast(e.message); }
   $("phone").disabled = false;
+};
+$("tunnel").onclick = async () => {
+  const panel = $("tunnelpanel");
+  if (!panel.hidden) { panel.hidden = true; return; }
+  $("tunnel").disabled = true;
+  toast("Creating the public link (a few seconds)...");
+  try {
+    const r = await api("tunnel", {});
+    $("tunnelurl").innerHTML = `<div>${esc(r.url)}</div>`;
+    panel.hidden = false;
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } catch (e) { toast(e.message); }
+  $("tunnel").disabled = false;
 };
 $("clear").onclick = async () => {
   try {
