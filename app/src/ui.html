@@ -161,9 +161,9 @@ footer .spacer { flex: 1; }
 
   <section class="card setup" id="phonepanel" hidden aria-live="polite">
     <div><b>Use on your phone</b> <span style="color:var(--muted)">- same Wi-Fi</span></div>
-    <div class="msg">Open this address in the phone's browser (long-press to copy):</div>
+    <div class="msg">Open one of these in the phone's browser - if the first doesn't load, try the next (the PC may have virtual network adapters):</div>
     <div class="msg" id="phoneurl" style="font-size:15px;color:var(--text);word-break:break-all;padding:6px 0"></div>
-    <div class="msg">Files still save to this PC. Keep this page open. If the phone can't connect, click Allow on the Windows firewall question, then press the button again.</div>
+    <div class="msg">Files still save to this PC. Keep this page open. If none load, click Allow on the Windows firewall question, then press the button again.</div>
   </section>
 
   <section class="card where">
@@ -367,7 +367,7 @@ $("phone").onclick = async () => {
   $("phone").disabled = true;
   try {
     const r = await api("phone", {});
-    $("phoneurl").textContent = r.url;
+    $("phoneurl").innerHTML = r.urls.map(u => `<div>${esc(u)}</div>`).join("");
     panel.hidden = false;
     panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
   } catch (e) { toast(e.message); }

@@ -83,7 +83,7 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
         const allowed = new Set([...ips.map(ip => `${ip}:${PHONE_PORT}`), `127.0.0.1:${PHONE_PORT}`, `localhost:${PHONE_PORT}`]);
         const s = http.createServer(makeHandler(allowed));
         await new Promise((resolve, reject) => { s.once("error", reject); s.listen(PHONE_PORT, "0.0.0.0", resolve); });
-        return { server: s, url: `http://${ips[0]}:${PHONE_PORT}/` };
+        return { server: s, urls: ips.map(ip => `http://${ip}:${PHONE_PORT}/`) };
     })().catch(e => { phoneP = null; throw e; });
 
     // one request handler shared by both servers; allowedHosts differs per server
@@ -133,8 +133,8 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
                 return json(res, 200, { message: (await tools.update()).message });
             }
             if (url.pathname === "/api/phone") {
-                const { url: phoneUrl } = await openPhoneServer();
-                return json(res, 200, { url: phoneUrl });
+                const { urls } = await openPhoneServer();
+                return json(res, 200, { url: urls[0], urls });
             }
             res.writeHead(404); res.end();
         } catch (e) { json(res, 500, { error: e.message }); }
