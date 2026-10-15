@@ -127,6 +127,11 @@ footer .spacer { flex: 1; }
     <div class="msg" id="setupmsg"></div>
   </section>
 
+  <section class="card setup" id="offline" hidden aria-live="polite" style="border-color:var(--err)">
+    <div><b>Save Tool is not running</b></div>
+    <div class="msg">This page is just a window onto the app - the app itself has stopped. Double-click <b>savetoolw.exe</b> again and reload this page. Files already downloaded are safe in your folder.</div>
+  </section>
+
   <section class="card box">
     <textarea id="url" rows="2" placeholder="Paste one or more links here (one per line)" autofocus></textarea>
     <div class="tools">
@@ -180,11 +185,17 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 async function api(path, body) {
-  const r = await fetch("/api/" + path, {
-    method: body === undefined ? "GET" : "POST",
-    headers: { "x-token": TOKEN, "content-type": "application/json" },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+  let r;
+  try {
+    r = await fetch("/api/" + path, {
+      method: body === undefined ? "GET" : "POST",
+      headers: { "x-token": TOKEN, "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch {
+    // the app behind this page has stopped (it closes itself a few minutes after you close the tab)
+    throw new Error("Save Tool is not running - start savetoolw.exe again, then reload this page.");
+  }
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.error || "Request failed");
   return data;
@@ -298,8 +309,13 @@ function render(s) {
 
 let failures = 0;
 async function poll() {
-  try { render(await api("state")); failures = 0; }
-  catch { if (++failures > 2) $("toolinfo").textContent = "Save Tool app was closed. Start savetool.exe again."; }
+  try { render(await api("state")); failures = 0; $("offline").hidden = true; }
+  catch (e) {
+    if (++failures > 2) {
+      $("offline").hidden = false;
+      $("toolinfo").textContent = "The Save Tool app was closed. Start savetoolw.exe again.";
+    }
+  }
 }
 
 async function start() {
@@ -338,8 +354,10 @@ $("shortcut").onclick = async () => {
   try { toast((await api("shortcut", {})).message); } catch (e) { toast(e.message); }
 };
 $("clear").onclick = async () => {
-  const s = await api("state");
-  for (const j of s.jobs) if (!["queued", "running"].includes(j.status)) await api(`jobs/${j.id}/remove`, {});
+  try {
+    const s = await api("state");
+    for (const j of s.jobs) if (!["queued", "running"].includes(j.status)) await api(`jobs/${j.id}/remove`, {});
+  } catch (e) { toast(e.message); }
   poll();
 };
 $("update").onclick = async () => {
