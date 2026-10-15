@@ -165,7 +165,7 @@ footer .spacer { flex: 1; }
     <div><b>Use on your phone</b> <span style="color:var(--muted)">- same Wi-Fi</span></div>
     <div class="msg">Open one of these in the phone's browser - if the first doesn't load, try the next (the PC may have virtual network adapters):</div>
     <div class="msg" id="phoneurl" style="font-size:15px;color:var(--text);word-break:break-all;padding:6px 0"></div>
-    <div class="msg">Files still save to this PC. Keep this page open. If none load, click Allow on the Windows firewall question, then press the button again.</div>
+    <div class="msg">Files still save to this PC. Keep this page open. If none load, click Allow on the Windows firewall question, then press the button again. On the phone, tap <b>Save to phone</b> on a finished download to put it in the phone's Downloads folder.</div>
   </section>
 
   <section class="card setup" id="tunnelpanel" hidden aria-live="polite" style="border-color:var(--accent)">
@@ -198,6 +198,8 @@ footer .spacer { flex: 1; }
 
 <script>
 const TOKEN = "__TOKEN__";
+// page opened from another device (phone/tablet over Wi-Fi or the public link)?
+const ON_PHONE = !/^(127\.0\.0\.1|localhost)$/.test(location.hostname);
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -274,7 +276,7 @@ function updateJob(el, j) {
   if (act.dataset.sig !== sig) {
     act.dataset.sig = sig;
     const b = (a, t) => `<button class="small" data-act="${a}" data-id="${j.id}">${t}</button>`;
-    act.innerHTML = (j.status === "done" ? b("open", "Show file") + `<a class="small" href="/api/file/${j.id}?t=${TOKEN}" download title="Download the file to this device">Save</a>` : "")
+    act.innerHTML = (j.status === "done" ? b("open", "Show file") + `<a class="small" href="/api/file/${j.id}?t=${TOKEN}" download title="Save the file into this device's Downloads folder">${ON_PHONE ? "Save to phone" : "Save"}</a>` : "")
       + (j.status === "error" || j.status === "cancelled" ? b("retry", "Retry") : "")
       + (live ? b("cancel", "Cancel") : b("remove", "Remove"));
   }

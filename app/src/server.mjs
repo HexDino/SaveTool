@@ -135,12 +135,30 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
         if (isFile && url.searchParams.get("t") === token) {
             const job = jobs.get(+url.pathname.slice("/api/file/".length));
             if (!job || job.status !== "done" || !job.file || !existsSync(job.file)) { res.writeHead(404); return res.end("no file"); }
-            const name = encodeURIComponent(basename(job.file));
-            res.writeHead(200, {
+            const size = statSync(job.file).size;
+            const name = basename(job.file);
+            // ASCII fallback + RFC 5987 name: Android browsers want the plain filename,
+            // iOS/desktop use filename* - sending both makes "save to Downloads" work everywhere
+            const ascii = name.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "");
+            const headers = {
                 "content-type": job.file.endsWith(".mp3") ? "audio/mpeg" : job.file.endsWith(".mp4") ? "video/mp4" : "application/octet-stream",
-                "content-length": statSync(job.file).size,
-                "content-disposition": `attachment; filename*=UTF-8''${name}`,
-            });
+                "content-disposition": `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`,
+                "accept-ranges": "bytes", // lets phone download managers resume / stream the file
+                "cache-control": "no-store",
+            };
+            // range requests (resume, video players, Android download manager)
+            const range = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || "").trim());
+            if (range) {
+                const start = range[1] ? +range[1] : 0;
+                const end = range[2] ? Math.min(+range[2], size - 1) : size - 1;
+                if (start >= size || start > end) {
+                    res.writeHead(416, { ...headers, "content-range": `bytes */${size}` });
+                    return res.end();
+                }
+                res.writeHead(206, { ...headers, "content-length": end - start + 1, "content-range": `bytes ${start}-${end}/${size}` });
+                return createReadStream(job.file, { start, end }).pipe(res);
+            }
+            res.writeHead(200, { ...headers, "content-length": size });
             return createReadStream(job.file).pipe(res);
         }
         if (!url.pathname.startsWith("/api/") || req.headers["x-token"] !== token) { res.writeHead(403); return res.end(); }
