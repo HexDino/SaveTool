@@ -15,3 +15,6 @@ app/dist/
 
 # Cloudflare Worker (wrangler)
 .wrangler/
+
+# runtime log from run-public.bat
+public-run.log
