@@ -5,8 +5,8 @@
 import http from "node:http";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, statSync, createReadStream } from "node:fs";
+import { join, basename } from "node:path";
 import { networkInterfaces } from "node:os";
 import html from "./ui.html";
 
@@ -91,9 +91,23 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
         if (!allowedHosts.has(req.headers.host || "")) { res.writeHead(403); return res.end(); }
         const url = new URL(req.url, "http://x");
 
+        // browser downloads cannot send custom headers, so the file route takes the token in the query
+        const isFile = req.method === "GET" && url.pathname.startsWith("/api/file/");
+
         if (req.method === "GET" && url.pathname === "/") {
             res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
             return res.end(html.replace("__TOKEN__", token));
+        }
+        if (isFile && url.searchParams.get("t") === token) {
+            const job = jobs.get(+url.pathname.slice("/api/file/".length));
+            if (!job || job.status !== "done" || !job.file || !existsSync(job.file)) { res.writeHead(404); return res.end("no file"); }
+            const name = encodeURIComponent(basename(job.file));
+            res.writeHead(200, {
+                "content-type": job.file.endsWith(".mp3") ? "audio/mpeg" : job.file.endsWith(".mp4") ? "video/mp4" : "application/octet-stream",
+                "content-length": statSync(job.file).size,
+                "content-disposition": `attachment; filename*=UTF-8''${name}`,
+            });
+            return createReadStream(job.file).pipe(res);
         }
         if (!url.pathname.startsWith("/api/") || req.headers["x-token"] !== token) { res.writeHead(403); return res.end(); }
 

@@ -43,6 +43,8 @@ button { font: 15px/1.5 system-ui, "Segoe UI", sans-serif; border: 1px solid var
 button:hover { border-color: var(--accent); color: var(--accent-hover); }
 .send:hover { background: var(--accent-hover); color: var(--accent-text); }
 button.small { padding: 5px 11px; font-size: 13px; }
+a.small { font: 13px/1.5 system-ui, "Segoe UI", sans-serif; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 5px 11px; cursor: pointer; text-decoration: none; display: inline-block; }
+a.small:hover { border-color: var(--accent); color: var(--accent-hover); }
 button:disabled { opacity: .6; cursor: default; }
 button:focus-visible, select:focus-visible, .pill.check:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -265,7 +267,7 @@ function updateJob(el, j) {
   if (act.dataset.sig !== sig) {
     act.dataset.sig = sig;
     const b = (a, t) => `<button class="small" data-act="${a}" data-id="${j.id}">${t}</button>`;
-    act.innerHTML = (j.status === "done" ? b("open", "Show file") : "")
+    act.innerHTML = (j.status === "done" ? b("open", "Show file") + `<a class="small" href="/api/file/${j.id}?t=${TOKEN}" download title="Download the file to this device">Save</a>` : "")
       + (j.status === "error" || j.status === "cancelled" ? b("retry", "Retry") : "")
       + (live ? b("cancel", "Cancel") : b("remove", "Remove"));
   }
