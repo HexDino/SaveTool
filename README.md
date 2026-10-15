@@ -135,7 +135,18 @@ Personal use only. Not for redistribution.
 
 ## Save Tool (standalone Windows app)
 
-No browser extension, Python or install needed. Download the [latest release](../../releases/latest) zip (it contains `savetool.exe` / `savetoolw.exe` plus `yt-dlp.exe`, `ffmpeg.exe` and `deno.exe`) and double-click `savetoolw.exe` — no console window opens, your browser opens a small page where you paste links and click **Download**. Files go to `Downloads\SaveTool`. Keep the exe files together. To quit, close the browser tab: Save Tool stops itself a few minutes later.
+### Which file to download
+
+From the [latest release](../../releases/latest):
+- **Most people: `SaveTool-vX.Y.Z-win64.zip`** (FULL PACKAGE). Unzip the whole folder and double-click **`savetoolw.exe`** — no console window, nothing extra downloaded. Keep the folder; all helper tools (yt-dlp, ffmpeg, deno) are inside.
+- `savetool.exe` (single file) is for **command-line use only** (`savetool.exe <link> [folder]`). Double-clicking it opens a black console window that must stay open while downloading, and the helper tools (~130 MB) are downloaded on first use.
+- `core.mjs` is an optional manual update for the Threads extractor.
+
+If the page ever says **"Failed to fetch"** or "Save Tool is not running": the app behind the page has stopped (it quits a few minutes after you close its tab, or immediately if you close its console window). Start `savetoolw.exe` again and use the fresh page it opens — do not reuse an old tab.
+
+### Using it
+
+No browser extension, Python or install needed. Double-click `savetoolw.exe` — no console window opens, your browser opens a small page where you paste links and click **Download**. Files go to `Downloads\SaveTool`. Keep the exe files together. To quit, close the browser tab: Save Tool stops itself a few minutes later.
 
 Works with **Threads, YouTube, Instagram, Facebook, TikTok, X** and other sites yt-dlp supports. Pick video (MP4) or audio (MP3) and a quality cap, paste several links at once, watch progress, cancel, and open the file or folder from the page.
 
