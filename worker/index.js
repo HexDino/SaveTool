@@ -47,6 +47,13 @@ export default {
 
         try {
             const res = await fetch(backend + url.pathname + url.search, init);
+            // a dead tunnel makes Cloudflare answer with its own 530/5xx error page -
+            // show the friendly notice instead (only for the page itself, never for API calls)
+            if (url.pathname === "/" && res.status >= 500) {
+                return new Response(OFFLINE_PAGE(`backend answered ${res.status}`), {
+                    status: 503, headers: { "content-type": "text/html; charset=utf-8" },
+                });
+            }
             return new Response(res.body, {
                 status: res.status,
                 statusText: res.statusText,
