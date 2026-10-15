@@ -4,6 +4,7 @@ import http from "node:http";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { join } from "node:path";
 import html from "./ui.html";
 
 export const PORT = 47821;
@@ -72,7 +73,7 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
         try {
             if (req.method === "GET" && url.pathname === "/api/state") {
                 seen = true; lastPing = Date.now();
-                return json(res, 200, { jobs: jobs.list(), outDir: getOutDir(), version, source, setup: tools.setup });
+                return json(res, 200, { jobs: jobs.list(), outDir: getOutDir(), version, source, setup: tools.setup, hasCookies: existsSync(join(tools.exeDir, "cookies.txt")) });
             }
             if (req.method !== "POST") { res.writeHead(405); return res.end(); }
             const body = await readBody(req);

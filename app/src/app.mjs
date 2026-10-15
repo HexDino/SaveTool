@@ -2,7 +2,7 @@
 //   savetool.exe                  -> opens the web UI in your browser
 //   savetool.exe <link> [folder]  -> command line download
 //   savetool.exe update           -> update yt-dlp
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync, statSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { homedir } from "node:os";
 import { spawn } from "node:child_process";
@@ -28,14 +28,48 @@ async function loadCore() {
     if (coreCache) return coreCache;
     const file = join(exeDir, "core.mjs");
     if (existsSync(file)) {
-        try { return coreCache = { core: await import(pathToFileURL(file).href), source: "core.mjs" }; }
+        try {
+            // mtime in the URL so an updated core.mjs is re-imported instead of served from the ESM cache
+            const href = `${pathToFileURL(file).href}?v=${statSync(file).mtimeMs}`;
+            return coreCache = { core: await import(href), source: "core.mjs" };
+        }
         catch (e) { console.log(`(ignoring broken core.mjs: ${e.message})`); }
     }
     return coreCache = { core: bundled, source: "built-in" };
 }
 
+// Threads breaks whenever Meta changes the page: pull the newest core.mjs from the repo, once a day.
+// Only in the packaged exe (in dev, exeDir is src/ and we must never overwrite the source file).
+const CORE_URL = "https://raw.githubusercontent.com/HexDino/SaveTool/main/app/src/core.mjs";
+const CORE_STAMP = join(exeDir, "core.mjs.updated");
+const packaged = !process.execPath.toLowerCase().endsWith("node.exe");
+const cmpVer = (a, b) => {
+    const pa = String(a).split(".").map(Number), pb = String(b).split(".").map(Number);
+    for (let i = 0; i < 3; i++) { const d = (pa[i] || 0) - (pb[i] || 0); if (d) return d; }
+    return 0;
+};
+async function updateCore() {
+    if (!packaged) return;
+    try {
+        if (existsSync(CORE_STAMP) && Date.now() - statSync(CORE_STAMP).mtimeMs < 24 * 3600e3) return;
+        const r = await fetch(CORE_URL, { cache: "no-store", signal: AbortSignal.timeout(8000) });
+        if (!r.ok) return;
+        const text = await r.text();
+        const ver = text.match(/export const VERSION\s*=\s*"([^"]+)"/)?.[1];
+        if (!ver || !text.includes("getThreadsMedia")) return; // not a usable core.mjs
+        const cur = (await loadCore()).core.VERSION;
+        if (cmpVer(ver, cur) > 0) {
+            writeFileSync(join(exeDir, "core.mjs"), text);
+            coreCache = undefined; // the next job picks up the new extractor
+            console.log(`Threads extractor updated ${cur} -> ${ver}`);
+        }
+        writeFileSync(CORE_STAMP, String(Date.now()));
+    } catch {}
+}
+
 async function main() {
     const [arg, argDir] = process.argv.slice(2);
+    updateCore().catch(() => {}); // keep the Threads extractor fresh without blocking startup
     const { core, source } = await loadCore();
 
     if (arg === "update") {

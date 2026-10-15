@@ -135,16 +135,16 @@ Personal use only. Not for redistribution.
 
 ## Save Tool (standalone Windows app)
 
-No browser extension, Python or install needed. Download `savetool.exe` from the [latest release](../../releases/latest) and double-click it: your browser opens a small page where you paste links and click **Download**. Files go to `Downloads\SaveTool`.
+No browser extension, Python or install needed. Download the [latest release](../../releases/latest) zip (it contains `savetool.exe` plus `yt-dlp.exe` and `ffmpeg.exe`) and double-click `savetool.exe`: your browser opens a small page where you paste links and click **Download**. Files go to `Downloads\SaveTool`. Keep the three exe files together.
 
 Works with **Threads, YouTube, Instagram, Facebook, TikTok, X** and other sites yt-dlp supports. Pick video (MP4) or audio (MP3) and a quality cap, paste several links at once, watch progress, cancel, and open the file or folder from the page.
 
 - Pick the download folder with **Change folder** (remembered in `settings.json` next to the exe). Click **Add shortcut** to put Save Tool on your Desktop and Start menu (search "Save Tool").
 - Failed downloads have a **Retry** button; your options (format, quality, login, playlist) are remembered; the page works on narrow windows too.
 - Command line: `savetool.exe <link> [folder]`
-- First use of a non-Threads link downloads yt-dlp (~18 MB) and ffmpeg (~115 MB) next to the exe, once. YouTube links also download a small JavaScript runtime, deno (~40 MB), once.
-- Stopped working? Click **Update** on the page (updates yt-dlp). For Threads, put the newer `core.mjs` from the release next to the exe.
-- Private / age-restricted / login-only videos: export browser cookies as `cookies.txt` and put it next to the exe.
+- yt-dlp and ffmpeg ship inside the release zip, so nothing is downloaded on first use. Only YouTube links download a small JavaScript runtime, deno (~40 MB), once.
+- Stopped working? Click **Update** on the page (updates yt-dlp). The Threads extractor refreshes itself from the project page on launch; you can also drop a newer `core.mjs` next to the exe. Threads links that the extractor cannot read automatically fall back to yt-dlp.
+- Private / age-restricted / login-only videos: set **Login** to your browser on the page (close Chrome/Edge first, they lock their cookie file), or export browser cookies as `cookies.txt` and put it next to the exe.
 - The page only listens on `127.0.0.1` and every request needs a per-run token, so other websites cannot drive it.
 
 ### Project layout

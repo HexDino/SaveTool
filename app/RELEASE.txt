@@ -6,10 +6,14 @@ Save Tool
    Click "Add shortcut" to find Save Tool on your Desktop / Start menu next time.
 3. Close the black window to quit.
 
-First use of a non-Threads link downloads yt-dlp and ffmpeg (~130 MB total, once) next to the exe.
+yt-dlp and ffmpeg are already in this folder, so nothing extra is downloaded on first use.
+Keep savetool.exe, yt-dlp.exe and ffmpeg.exe together. A YouTube link downloads a small JS
+runtime (deno, ~40 MB) once.
 Command line:  savetool.exe <link> [folder]
 
 Stopped working? Click "Update" on the page (updates yt-dlp).
-Threads broke? Put the newer core.mjs from the release next to savetool.exe.
-Private videos: put a cookies.txt (exported from your browser) next to savetool.exe.
+Threads broke? It refreshes the Threads extractor from the project page on launch; you can also
+drop a newer core.mjs next to savetool.exe.
+Private / login-only videos: set "Login" to your browser on the page (close Chrome/Edge first),
+or put a cookies.txt (exported from your browser) next to savetool.exe.
 (Windows SmartScreen may warn on first run because the exe is unsigned: More info > Run anyway.)

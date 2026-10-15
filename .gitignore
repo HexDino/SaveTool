@@ -9,3 +9,6 @@ native_host/com.socialdownloader.ytdlp.json
 native_host/yt_dlp_host.bat
 app/dist/
 .cache/
+
+# WorkBuddy AI workspace data
+.workbuddy-ai/

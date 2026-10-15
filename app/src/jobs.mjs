@@ -19,6 +19,27 @@ const isYoutube = url => { try { return /(^|\.)(youtube\.com|youtu\.be)$/.test(n
 
 export const isThreads = url => { try { return /^(www\.)?threads\.(com|net)$/.test(new URL(url).hostname); } catch { return false; } };
 
+// Turn the tail of a failed yt-dlp run into one line the user can act on.
+function failureMessage(r) {
+    const all = r.tail.join(" ");
+    const hint = (r.tail.at(-1) || "download failed").replace(/^ERROR:\s*(\[[^\]]+\]\s*)?/, "").slice(0, 200);
+    const extra =
+        /not a bot|Sign in to confirm|cookies for the authentication/i.test(all)
+            ? "This site wants a signed-in session: set Login to your browser (close Chrome/Edge first) or put a cookies.txt next to the exe."
+        : /log ?in|sign ?in|private|empty media|age|restricted|authenticat|premium|members-only|only available/i.test(all)
+            ? "This looks login-only: pick your browser in the Login option, then try again."
+        : /Unsupported URL|no suitable extractor/i.test(all)
+            ? "yt-dlp has no extractor for this link."
+        : /Video unavailable|has been removed|no longer available|deleted|not available in your (country|region)/i.test(all)
+            ? "The post or video is gone, private or region-locked."
+        : /HTTP Error 403|Forbidden/i.test(all)
+            ? "The site refused the request (403) - try the Login option, or click Update."
+        : /Unable to download|timed out|Temporary failure|Connection|getaddrinfo|network|SSL/i.test(all)
+            ? "Network problem - check your connection and try again."
+        : "";
+    return extra ? `${hint} - ${extra}` : hint;
+}
+
 // outDir: folder path, or a function returning it (read when a job is added, so the user can change it)
 export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
     const jobs = new Map();
@@ -86,15 +107,7 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
         }
 
         if (job.cancelled) return;
-        if (r.code !== 0 && !r.saved) {
-            let hint = r.tail.at(-1)?.replace(/^ERROR:\s*(\[[^\]]+\]\s*)?/, "") || "download failed";
-            hint = hint.slice(0, 220);
-            const all = r.tail.join(" ");
-            const extra = /cookie/i.test(all) ? "Close the browser and try again (Chrome/Edge lock their cookie file), or pick Firefox / cookies.txt."
-                : /log ?in|sign ?in|private|empty media|age|restricted|authenticat/i.test(all) ? "this one probably needs login: pick your browser in the Login option."
-                : "";
-            throw new Error(extra ? `${hint} - ${extra}` : hint);
-        }
+        if (r.code !== 0 && !r.saved) throw new Error(failureMessage(r));
         const partial = r.code !== 0;
         set(job, {
             status: "done", progress: 100,
@@ -136,6 +149,20 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
         return { code, tail, saved };
     }
 
+    // Threads uses core.mjs (fast, no yt-dlp download). If that extractor breaks, fall back to yt-dlp
+    // instead of failing the job - it handles many Threads links too.
+    async function runJob(job) {
+        if (!isThreads(job.url)) return runYtdlp(job);
+        try {
+            return await runThreads(job);
+        } catch (e) {
+            if (job.cancelled) return;
+            set(job, { status: "running", message: "Threads extractor failed - trying yt-dlp...", progress: 0 });
+            try { return await runYtdlp(job); }
+            catch (e2) { throw new Error(`${e2.message} (Threads extractor: ${String(e.message).slice(0, 120)})`); }
+        }
+    }
+
     return {
         add({ url, kind = "video", quality = "best", cookies = "auto", playlist = false }) {
             url = String(url || "").trim();
@@ -143,10 +170,9 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
             const job = { id: ++seq, outDir: typeof outDir === "function" ? outDir() : outDir, url, kind, quality, cookies: String(cookies), playlist: !!playlist, status: "queued", progress: 0, message: "Queued", title: url, file: null, abort: new AbortController() };
             jobs.set(job.id, job);
             onChange(job);
-            (isThreads(url) ? runThreads : runYtdlp)(job).catch(e => {
+            runJob(job).catch(e => {
                 if (!job.cancelled) set(job, { status: "error", message: e.message });
-            });
-            return job;
+            });            return job;
         },
         cancel(id) {
             const j = jobs.get(id);
