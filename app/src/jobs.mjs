@@ -77,6 +77,7 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
 
         const args = [
             job.playlist ? "--yes-playlist" : "--no-playlist", "--newline", "--no-warnings", "--progress",
+            "--concurrent-fragments", "8", // download many DASH/HLS fragments in parallel
             "--progress-template", "download:PROG %(progress._percent_str)s",
             "--print", "before_dl:TITLE %(title)s",
             "--print", "before_dl:ITEM %(playlist_index|)s/%(n_entries|)s %(playlist_title|)s",

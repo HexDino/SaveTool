@@ -1,7 +1,7 @@
-// node app/build.mjs         -> app/dist/savetool.exe + yt-dlp.exe + ffmpeg.exe (ready to zip: no first-run download)
+// node app/build.mjs         -> app/dist/savetool.exe + savetoolw.exe + yt-dlp.exe + ffmpeg.exe + deno.exe (ready to zip: no first-run download)
 // node app/build.mjs --slim  -> savetool.exe only (the tools are downloaded on first use)
 import { execSync } from "node:child_process";
-import { mkdirSync, copyFileSync, writeFileSync, rmSync, existsSync } from "node:fs";
+import { mkdirSync, copyFileSync, writeFileSync, readFileSync, rmSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 process.chdir(dirname(fileURLToPath(import.meta.url)));
@@ -42,8 +42,25 @@ if (!slim) {
         run(`"${tar}" -xf "${ffzip}" -C "${CACHE}" --strip-components=2 "*/bin/ffmpeg.exe"`);
     }
     copyFileSync(`${CACHE}/ffmpeg.exe`, "dist/ffmpeg.exe");
+    const denozip = `${CACHE}/deno.zip`;
+    await fetchTo("https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip", denozip);
+    if (!existsSync(`${CACHE}/deno.exe`)) {
+        const tar = join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe");
+        run(`"${tar}" -xf "${denozip}" -C "${CACHE}" deno.exe`);
+    }
+    copyFileSync(`${CACHE}/deno.exe`, "dist/deno.exe");
 }
+// savetoolw.exe: same binary with the PE subsystem switched from console (3) to windows (2),
+// so double-clicking it opens no black terminal window. savetool.exe stays for command-line use.
+const toWindowed = buf => {
+    const pe = buf.readUInt32LE(0x3c); // e_lfanew
+    if (buf.toString("ascii", pe, pe + 4) !== "PE\0\0") throw new Error("not a PE file");
+    if (![0x10b, 0x20b].includes(buf.readUInt16LE(pe + 24))) throw new Error("unknown optional header");
+    buf.writeUInt16LE(2, pe + 24 + 68); // Subsystem field, same offset in PE32 and PE32+
+    return buf;
+};
+writeFileSync("dist/savetoolw.exe", toWindowed(readFileSync("dist/savetool.exe")));
 copyFileSync("src/core.mjs", "dist/core.mjs");
 copyFileSync("RELEASE.txt", "dist/README.txt");
 rmSync("dist/app.cjs"); rmSync("dist/sea.blob"); rmSync("dist/sea-config.json");
-console.log(`built app/dist/${slim ? "savetool.exe (slim)" : "savetool.exe + yt-dlp.exe + ffmpeg.exe"}`);
+console.log(`built app/dist/${slim ? "savetool.exe (slim)" : "savetool.exe + savetoolw.exe + yt-dlp.exe + ffmpeg.exe + deno.exe"}`);

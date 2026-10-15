@@ -1,19 +1,21 @@
 Save Tool
 ---------
-1. Double-click savetool.exe. Your browser opens the Save Tool page.
+1. Double-click savetoolw.exe (no black window) or savetool.exe (with a console window).
+   Your browser opens the Save Tool page.
 2. Paste one or more links (Threads, YouTube, Instagram, Facebook, TikTok, X...), click Download.
    Files go to  Downloads\SaveTool   (change it with "Change folder" on the page).
    Click "Add shortcut" to find Save Tool on your Desktop / Start menu next time.
-3. Close the black window to quit.
+   The shortcut uses savetoolw.exe, so no console window appears.
+3. To quit, just close the browser tab - Save Tool stops itself a few minutes later.
 
-yt-dlp and ffmpeg are already in this folder, so nothing extra is downloaded on first use.
-Keep savetool.exe, yt-dlp.exe and ffmpeg.exe together. A YouTube link downloads a small JS
-runtime (deno, ~40 MB) once.
-Command line:  savetool.exe <link> [folder]
+Everything runs from this folder: yt-dlp, ffmpeg and the YouTube helper (deno) are already
+here, so nothing is downloaded on first use. Keep the exe files together.
+Command line:  savetool.exe <link> [folder]   (the "w" exe is for double-clicking)
 
 Stopped working? Click "Update" on the page (updates yt-dlp).
 Threads broke? It refreshes the Threads extractor from the project page on launch; you can also
-drop a newer core.mjs next to savetool.exe.
+drop a newer core.mjs next to savetool.exe. Threads links the extractor cannot read fall back
+to yt-dlp automatically.
 Private / login-only videos: set "Login" to your browser on the page (close Chrome/Edge first),
 or put a cookies.txt (exported from your browser) next to savetool.exe.
 (Windows SmartScreen may warn on first run because the exe is unsigned: More info > Run anyway.)
