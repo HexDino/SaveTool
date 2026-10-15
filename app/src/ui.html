@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Save Tool</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d97757'/%3E%3Cpath d='M16 7v12m0 0l-5-5m5 5l5-5M9 24h14' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
@@ -17,7 +17,7 @@
           --ok: #8fc18f; --err: #ec8a72; --track: #43433f; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.25); }
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
 main { max-width: 720px; margin: 0 auto; padding: 44px 18px 64px; }
 header { text-align: center; margin-bottom: 28px; }
 header .logo { width: 52px; height: 52px; margin: 0 auto 14px; display: block; }
@@ -45,6 +45,10 @@ button:hover { border-color: var(--accent); color: var(--accent-hover); }
 button.small { padding: 5px 11px; font-size: 13px; }
 a.small { font: 13px/1.5 system-ui, "Segoe UI", sans-serif; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 5px 11px; cursor: pointer; text-decoration: none; display: inline-block; }
 a.small:hover { border-color: var(--accent); color: var(--accent-hover); }
+/* the main action on a phone: make it obvious and easy to hit */
+a.small.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+a.small.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--accent-text); }
+button:active, a.small:active { transform: scale(.97); }
 button:disabled { opacity: .6; cursor: default; }
 button:focus-visible, select:focus-visible, .pill.check:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 
@@ -86,27 +90,42 @@ footer .spacer { flex: 1; }
 .fine[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .bar > i, #toast, .setup .bar > i.indet { transition: none; animation: none; } }
 @media (max-width: 600px) {
-  main { padding: 26px 12px 48px; }
-  header { margin-bottom: 20px; }
-  header .logo { width: 44px; height: 44px; margin-bottom: 10px; }
-  header h1 { font-size: 27px; }
+  main { padding: 20px 12px max(40px, env(safe-area-inset-bottom)); }
+  header { margin-bottom: 16px; }
+  header .logo { width: 40px; height: 40px; margin-bottom: 8px; }
+  header h1 { font-size: 25px; }
   header .sub { font-size: 13.5px; }
   .box { padding: 12px 12px 10px; border-radius: 18px; }
-  .tools { gap: 6px; }
-  .pill { font-size: 12.5px; flex: 1 1 calc(50% - 6px); justify-content: space-between; min-width: 0; }
-  .pill select { min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+  /* touch: every control gets a comfortable hit area */
+  button, a.small { min-height: 42px; font-size: 14px; padding: 10px 14px; }
+  button.small, a.small { padding: 10px 14px; }
+  .pill { font-size: 13px; flex: 1 1 calc(50% - 6px); justify-content: space-between; min-width: 0; min-height: 42px; padding: 6px 8px 6px 12px; white-space: nowrap; }
+  .pill select { min-width: 0; max-width: 100%; text-overflow: ellipsis; padding: 6px 4px; }
   .pill.check { flex: 1 1 calc(50% - 6px); justify-content: flex-start; }
+  .tools { gap: 8px; }
   .tools .sep { display: none; }
-  .tools .btn-icon { margin-left: auto; }
-  .where { flex-wrap: wrap; gap: 6px 8px; padding: 10px 12px; }
-  .where .path { order: 3; flex: 1 0 100%; direction: ltr; }
+  .tools .btn-icon { margin-left: auto; width: 46px; height: 46px; }
+  .send { width: 52px; height: 52px; border-radius: 14px; }
+  .box textarea { font-size: 16px; min-height: 64px; }
+  .hint, .fine { font-size: 13px; margin: 10px 4px 0; }
+  .where { flex-wrap: wrap; gap: 8px; padding: 12px; }
+  .where .path { order: 3; flex: 1 0 100%; direction: ltr; font-size: 13px; }
   .where .lbl { flex: 1; }
+  .where button { flex: 1 1 calc(50% - 4px); }
+  h2 { font-size: 19px; margin: 26px 0 10px; }
   .job { padding: 12px; }
   .job .top { flex-wrap: wrap; }
-  .job .title { flex: 1 0 100%; white-space: normal; overflow-wrap: anywhere; }
-  footer { justify-content: space-between; }
+  .job .title { flex: 1 0 100%; white-space: normal; overflow-wrap: anywhere; font-size: 15px; }
+  .job .msg, .job .file { font-size: 13px; }
+  /* actions fill the row: one-thumb tapping instead of aiming at small buttons */
+  .job .actions { gap: 8px; }
+  .job .actions button, .job .actions a.small { flex: 1; text-align: center; }
+  footer { justify-content: space-between; gap: 8px; }
   footer #toolinfo { flex: 1 0 100%; }
   footer .spacer { display: none; }
+  footer button { flex: 1 1 calc(50% - 4px); }
+  .setup .msg { font-size: 13px; }
+  #toast { bottom: max(16px, env(safe-area-inset-bottom)); width: calc(100% - 24px); max-width: 420px; text-align: center; }
 }
 @media (max-width: 380px) {
   .pill { flex-basis: 100%; }
@@ -267,7 +286,7 @@ function updateJob(el, j) {
   set(".chip", site(j.url));
   set(".title", j.title).title = j.url;
   el.querySelector(".bar > i").style.width = (j.status === "done" ? 100 : j.progress) + "%";
-  set(".msg", j.message + (live && j.progress ? ` · ${j.progress}%` : ""));
+  set(".msg", j.message + (live && j.progress ? ` · ${j.progress}%` : "") + (ON_PHONE && j.status === "done" && j.file ? " · tap Save to phone" : ""));
   const f = el.querySelector(".file");
   f.hidden = j.status !== "done" || !j.file;
   if (!f.hidden) { f.textContent = baseName(j.file); f.title = j.file; }
@@ -276,7 +295,9 @@ function updateJob(el, j) {
   if (act.dataset.sig !== sig) {
     act.dataset.sig = sig;
     const b = (a, t) => `<button class="small" data-act="${a}" data-id="${j.id}">${t}</button>`;
-    act.innerHTML = (j.status === "done" ? b("open", "Show file") + `<a class="small" href="/api/file/${j.id}?t=${TOKEN}" download title="Save the file into this device's Downloads folder">${ON_PHONE ? "Save to phone" : "Save"}</a>` : "")
+    // "Show file" opens Explorer on the PC - pointless on a phone, where the useful action is Save
+    const saveLink = `<a class="small${ON_PHONE ? " primary" : ""}" href="/api/file/${j.id}?t=${TOKEN}" download title="Save the file into this device's Downloads folder">${ON_PHONE ? "Save to phone" : "Save"}</a>`;
+    act.innerHTML = (j.status === "done" ? (ON_PHONE ? "" : b("open", "Show file")) + saveLink : "")
       + (j.status === "error" || j.status === "cancelled" ? b("retry", "Retry") : "")
       + (live ? b("cancel", "Cancel") : b("remove", "Remove"));
   }
