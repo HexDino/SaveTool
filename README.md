@@ -152,6 +152,7 @@ Works with **Threads, YouTube, Instagram, Facebook, TikTok, X** and other sites 
 
 - Pick the download folder with **Change folder** (remembered in `settings.json` next to the exe). Click **Add shortcut** to put Save Tool on your Desktop and Start menu (search "Save Tool").
 - Failed downloads have a **Retry** button; your options (format, quality, login, playlist) are remembered; the page works on narrow windows too.
+- **Use on phone**: click **Use on phone** on the page and open the shown address (`http://<your-PC-ip>:47822`) in your phone's browser while both are on the same Wi-Fi. The phone gets the same page; downloads still save to the PC. The phone port is protected by the same token and a Host check.
 - Command line: `savetool.exe <link> [folder]`
 - yt-dlp, ffmpeg and the YouTube helper (deno) ship inside the release zip, so nothing is downloaded on first use.
 - Stopped working? Click **Update** on the page (updates yt-dlp). The Threads extractor refreshes itself from the project page on launch; you can also drop a newer `core.mjs` next to the exe. Threads links that the extractor cannot read automatically fall back to yt-dlp.

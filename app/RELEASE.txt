@@ -16,6 +16,8 @@ Stopped working? Click "Update" on the page (updates yt-dlp).
 Threads broke? It refreshes the Threads extractor from the project page on launch; you can also
 drop a newer core.mjs next to savetool.exe. Threads links the extractor cannot read fall back
 to yt-dlp automatically.
+On your phone: click "Use on phone" on the page, open the shown address in the phone's browser
+(same Wi-Fi). Downloads still save to this PC.
 Private / login-only videos: set "Login" to your browser on the page (close Chrome/Edge first),
 or put a cookies.txt (exported from your browser) next to savetool.exe.
 (Windows SmartScreen may warn on first run because the exe is unsigned: More info > Run anyway.)

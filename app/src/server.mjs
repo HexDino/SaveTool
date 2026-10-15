@@ -1,13 +1,29 @@
-// Local web UI server. Binds to 127.0.0.1 only; every API call needs the per-run token
-// (a random page on the internet can reach localhost, so the token + Host check matter).
+// Local web UI server. The main server binds to 127.0.0.1 only; every API call needs the
+// per-run token (a random page on the internet can reach localhost, so the token + Host check
+// matter). "Use on phone" opens a second server on the LAN (same token), so a phone on the
+// same Wi-Fi can open the same page; downloads still land on this PC.
 import http from "node:http";
 import { randomBytes } from "node:crypto";
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { networkInterfaces } from "node:os";
 import html from "./ui.html";
 
 export const PORT = 47821;
+export const PHONE_PORT = 47822;
+
+// private IPv4 addresses of this machine (phone URL candidates), best guess first
+const lanIps = () => {
+    const ips = [];
+    for (const list of Object.values(networkInterfaces())) {
+        for (const ni of list || []) {
+            if (ni.family === "IPv4" && !ni.internal) ips.push(ni.address);
+        }
+    }
+    const rank = ip => ip.startsWith("192.168.") ? 0 : ip.startsWith("10.") ? 1 : 2;
+    return ips.sort((a, b) => rank(a) - rank(b));
+};
 
 const ps = (script, env = {}) => new Promise(resolve => {
     const p = spawn("powershell.exe", ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script],
@@ -59,9 +75,20 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
     const readBody = req => new Promise(r => { let s = ""; req.on("data", c => s += c); req.on("end", () => { try { r(JSON.parse(s || "{}")); } catch { r({}); } }); });
     const explorer = args => spawn("explorer.exe", args, { detached: true, stdio: "ignore" }).unref();
 
-    const server = http.createServer(async (req, res) => {
-        const host = req.headers.host || "";
-        if (host !== `127.0.0.1:${PORT}` && host !== `localhost:${PORT}`) { res.writeHead(403); return res.end(); }
+    // opened on demand by /api/phone: same page + token, but reachable from the Wi-Fi
+    let phoneP;
+    const openPhoneServer = () => phoneP ??= (async () => {
+        const ips = lanIps();
+        if (!ips.length) throw new Error("no Wi-Fi / network connection found on this PC");
+        const allowed = new Set([...ips.map(ip => `${ip}:${PHONE_PORT}`), `127.0.0.1:${PHONE_PORT}`, `localhost:${PHONE_PORT}`]);
+        const s = http.createServer(makeHandler(allowed));
+        await new Promise((resolve, reject) => { s.once("error", reject); s.listen(PHONE_PORT, "0.0.0.0", resolve); });
+        return { server: s, url: `http://${ips[0]}:${PHONE_PORT}/` };
+    })().catch(e => { phoneP = null; throw e; });
+
+    // one request handler shared by both servers; allowedHosts differs per server
+    const makeHandler = allowedHosts => async (req, res) => {
+        if (!allowedHosts.has(req.headers.host || "")) { res.writeHead(403); return res.end(); }
         const url = new URL(req.url, "http://x");
 
         if (req.method === "GET" && url.pathname === "/") {
@@ -105,9 +132,15 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
             if (url.pathname === "/api/update") {
                 return json(res, 200, { message: (await tools.update()).message });
             }
+            if (url.pathname === "/api/phone") {
+                const { url: phoneUrl } = await openPhoneServer();
+                return json(res, 200, { url: phoneUrl });
+            }
             res.writeHead(404); res.end();
         } catch (e) { json(res, 500, { error: e.message }); }
-    });
+    };
+
+    const server = http.createServer(makeHandler(new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`])));
 
     // close itself a few minutes after the browser tab is gone (never during a download)
     setInterval(() => { if (seen && Date.now() - lastPing > 180000 && !jobs.active()) onIdleExit(); }, 10000).unref();

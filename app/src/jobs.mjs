@@ -41,6 +41,15 @@ function failureMessage(r) {
 }
 
 // outDir: folder path, or a function returning it (read when a job is added, so the user can change it)
+// Long URLs wreck the job list layout: show host + a short path instead (full url stays in the tooltip)
+const shortLink = url => {
+    try {
+        const u = new URL(url);
+        const s = u.hostname.replace(/^www\./, "") + u.pathname + u.search;
+        return s.length > 60 ? s.slice(0, 57) + "..." : s;
+    } catch { return url; }
+};
+
 export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
     const jobs = new Map();
     let seq = 0;
@@ -168,7 +177,7 @@ export function makeJobs({ tools, loadCore, outDir, onChange = () => {} }) {
         add({ url, kind = "video", quality = "best", cookies = "auto", playlist = false }) {
             url = String(url || "").trim();
             if (!/^https?:\/\//i.test(url)) throw new Error("That doesn't look like a link.");
-            const job = { id: ++seq, outDir: typeof outDir === "function" ? outDir() : outDir, url, kind, quality, cookies: String(cookies), playlist: !!playlist, status: "queued", progress: 0, message: "Queued", title: url, file: null, abort: new AbortController() };
+            const job = { id: ++seq, outDir: typeof outDir === "function" ? outDir() : outDir, url, kind, quality, cookies: String(cookies), playlist: !!playlist, status: "queued", progress: 0, message: "Queued", title: shortLink(url), file: null, abort: new AbortController() };
             jobs.set(job.id, job);
             onChange(job);
             runJob(job).catch(e => {
