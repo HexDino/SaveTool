@@ -194,8 +194,9 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
 
     const server = http.createServer(makeHandler(localHosts));
 
-    // close itself a few minutes after the browser tab is gone (never during a download)
-    setInterval(() => { if (seen && Date.now() - lastPing > 180000 && !jobs.active()) onIdleExit(); }, 10000).unref();
+    // close itself a few minutes after the browser tab is gone (never during a download).
+    // In public mode the app is a server behind a tunnel: it must stay up until the launcher stops it.
+    if (!publicMode) setInterval(() => { if (seen && Date.now() - lastPing > 180000 && !jobs.active()) onIdleExit(); }, 10000).unref();
 
     return new Promise((resolve, reject) => {
         server.once("error", reject);

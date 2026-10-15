@@ -106,18 +106,36 @@ async function setSecret(value) {
     await runSecret(npx, ["--yes", "wrangler@4", "secret", "put", "BACKEND_ORIGIN"], value, useShell);
 }
 
+let stopping = false;
 function stopAll() {
+    stopping = true;
     for (const c of children) { try { c.kill(); } catch {} }
 }
 process.on("SIGINT", () => { stopAll(); process.exit(0); });
 process.on("exit", stopAll);
+
+// keep the app alive: if it ever exits (crash, taskkill, ...) bring it back so the tunnel
+// in front of it keeps working instead of answering 502
+function superviseApp(appPath) {
+    const spawnApp = () => {
+        const child = spawn(appPath, [], { env: { ...process.env, SAVETOOL_PUBLIC: "1" }, stdio: "ignore", detached: false });
+        children.push(child);
+        child.on("exit", code => {
+            if (stopping) return;
+            log(`app exited (code ${code}) - restarting in 2s`);
+            setTimeout(spawnApp, 2000);
+        });
+        return child;
+    };
+    return spawnApp();
+}
 
 async function main() {
     if (!tunnelOnly) {
         const app = findApp();
         if (!app) throw new Error("app/dist/savetoolw.exe not found - build it first: node app/build.mjs");
         log(`starting ${app.split(/[\\/]/).pop()} (public mode)...`);
-        children.push(spawn(app, [], { env: { ...process.env, SAVETOOL_PUBLIC: "1" }, stdio: "ignore", detached: false }));
+        superviseApp(app);
         if (!await waitForApp()) throw new Error("savetool did not answer on 127.0.0.1:47821");
         log("app is up");
     }
