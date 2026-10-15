@@ -9,7 +9,7 @@
 //   --tunnel-only   do not start savetool, only the tunnel + secret sync
 //   --url <url>     public Worker URL to print (default: the deployed savetool Worker)
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, appendFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -17,6 +17,7 @@ const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const APP_PORT = 47821;
 const WORKER_NAME = "savetool";
 const DEFAULT_PUBLIC_URL = "https://savetool.thanhhung33.workers.dev";
+const LOG_FILE = join(ROOT, "public-run.log");
 
 const args = process.argv.slice(2);
 const tunnelOnly = args.includes("--tunnel-only");
@@ -24,8 +25,16 @@ const urlFlag = args.indexOf("--url");
 const publicUrl = urlFlag >= 0 ? args[urlFlag + 1] : DEFAULT_PUBLIC_URL;
 
 const npx = process.platform === "win32" ? "npx.cmd" : "npx";
-const log = (...a) => console.log("[public]", ...a);
+// prefer the locally installed wrangler (run `npm install` once) - no shim, no download
+const localWrangler = join(ROOT, "node_modules", "wrangler", "bin", "wrangler.js");
 const children = [];
+
+// everything goes to the console and to public-run.log (so a failed run can be inspected later)
+const log = (...a) => {
+    const line = `[${new Date().toISOString()}] ${a.join(" ")}`;
+    console.log("[public]", ...a);
+    try { appendFileSync(LOG_FILE, line + "\n"); } catch {}
+};
 
 function findApp() {
     for (const name of ["savetoolw.exe", "savetool.exe"]) {
@@ -68,11 +77,10 @@ function startTunnel() {
     });
 }
 
-function setSecret(value) {
+// put the value into the Worker secret; resolves on success, rejects with the tail of the output
+function runSecret(cmd, cmdArgs, value, useShell) {
     return new Promise((resolve, reject) => {
-        // npx is a .cmd shim on Windows, which Node refuses to spawn without a shell
-        const p = spawn(npx, ["--yes", "wrangler@4", "secret", "put", "BACKEND_ORIGIN"],
-            { cwd: ROOT, shell: process.platform === "win32", stdio: ["pipe", "pipe", "pipe"] });
+        const p = spawn(cmd, cmdArgs, { cwd: ROOT, shell: useShell, stdio: ["pipe", "pipe", "pipe"] });
         let out = "";
         p.stdout.on("data", d => out += d);
         p.stderr.on("data", d => out += d);
@@ -81,6 +89,21 @@ function setSecret(value) {
         p.stdin.write(value + "\n");
         p.stdin.end();
     });
+}
+
+async function setSecret(value) {
+    const useShell = process.platform === "win32";
+    if (existsSync(localWrangler)) {
+        try {
+            log("using the local wrangler");
+            await runSecret(process.execPath, [localWrangler, "secret", "put", "BACKEND_ORIGIN"], value, false);
+            return;
+        } catch (e) {
+            log(`local wrangler failed (${String(e.message).slice(0, 80)}) - falling back to npx`);
+        }
+    }
+    log("using npx wrangler@4");
+    await runSecret(npx, ["--yes", "wrangler@4", "secret", "put", "BACKEND_ORIGIN"], value, useShell);
 }
 
 function stopAll() {
