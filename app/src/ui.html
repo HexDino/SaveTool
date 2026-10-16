@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Save Tool</title>
+<script>try { if (localStorage.getItem("savetool.theme") === "dark") document.documentElement.dataset.theme = "dark"; } catch {}</script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23d97757'/%3E%3Cpath d='M16 7v12m0 0l-5-5m5 5l5-5M9 24h14' stroke='white' stroke-width='2.6' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <style>
 :root {
@@ -12,13 +13,21 @@
   --shadow: 0 1px 2px rgba(20,20,19,.04), 0 6px 24px rgba(20,20,19,.05);
   --serif: ui-serif, "Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif;
 }
-@media (prefers-color-scheme: dark) {
-  :root { --bg: #262624; --card: #30302e; --soft: #3a3a37; --text: #faf9f5; --muted: #a6a59d; --line: #43433f;
-          --ok: #8fc18f; --err: #ec8a72; --track: #43433f; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.25); }
+/* Light (Claude-style cream + serif + terracotta) is the default.
+   Dark is opt-in via the header toggle - remembered in localStorage. */
+:root[data-theme="dark"] {
+  --bg: #262624; --card: #30302e; --soft: #3a3a37; --text: #faf9f5; --muted: #a6a59d; --line: #43433f;
+  --ok: #8fc18f; --err: #ec8a72; --track: #43433f; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 24px rgba(0,0,0,.25);
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; -webkit-tap-highlight-color: transparent; }
-main { max-width: 720px; margin: 0 auto; padding: 44px 18px 64px; }
+main { max-width: 720px; margin: 0 auto; padding: 44px 18px 64px; position: relative; }
+#theme { position: absolute; top: 0; right: 0; width: 38px; height: 38px; padding: 0; border-radius: 10px; display: grid; place-items: center; color: var(--muted); }
+#theme:hover { color: var(--text); }
+#theme svg { display: none; }
+#icon-moon { display: block; }
+[data-theme="dark"] #icon-moon { display: none; }
+[data-theme="dark"] #icon-sun { display: block; }
 header { text-align: center; margin-bottom: 28px; }
 header .logo { width: 52px; height: 52px; margin: 0 auto 14px; display: block; }
 header h1 { font: 500 34px/1.15 var(--serif); margin: 0 0 6px; letter-spacing: -.01em; }
@@ -137,6 +146,10 @@ footer .spacer { flex: 1; }
 </head>
 <body>
 <main>
+  <button id="theme" title="Toggle light / dark" aria-label="Toggle light / dark">
+    <svg id="icon-moon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    <svg id="icon-sun" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+  </button>
   <header>
     <svg class="logo" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="#d97757"/><path d="M32 13v24" stroke="#faf9f5" stroke-width="6" stroke-linecap="round"/><path d="M19 32h26L32 46z" fill="#faf9f5" stroke="#faf9f5" stroke-width="2" stroke-linejoin="round"/><path d="M19 52h26" stroke="#faf9f5" stroke-width="6" stroke-linecap="round"/></svg>
     <h1>Save Tool</h1>
@@ -321,9 +334,16 @@ function render(s) {
     s.jobs.forEach((j, i) => {
       seen.add(j.id);
       let el = nodes.get(j.id);
-      if (!el) { el = buildJob(j); nodes.set(j.id, el); }
+      let fresh = false;
+      if (!el) {
+        el = buildJob(j); nodes.set(j.id, el);
+        // a fresh submit: bring the new card into view (it lands below the fold on phones).
+        // scroll AFTER the card is inserted - scrollIntoView on an unattached node does nothing.
+        if (submitAt && Date.now() - submitAt < 10000) { fresh = true; submitAt = 0; }
+      }
       updateJob(el, j);
       if (box.children[i] !== el) box.insertBefore(el, box.children[i] || null);
+      if (fresh) el.scrollIntoView({ behavior: "smooth", block: "start" });
     });
     for (const [id, el] of nodes) if (!seen.has(id)) { el.remove(); nodes.delete(id); }
   }
@@ -345,14 +365,28 @@ async function poll() {
   }
 }
 
+// theme: light is the default (Claude-style); the header toggle flips to dark and remembers it
+$("theme").onclick = () => {
+  const dark = document.documentElement.dataset.theme === "dark";
+  if (dark) document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.dataset.theme = "dark";
+  try { localStorage.setItem("savetool.theme", dark ? "light" : "dark"); } catch {}
+};
+
+// after submitting, scroll the fresh job card into view (on phones it lands below the fold).
+// timestamp-based: a render may create the card before the submit response returns, and a stale
+// flag must never force-scroll minutes later.
+let submitAt = 0;
+
 async function start() {
   const url = $("url").value.trim();
   if (!url) { toast("Paste a link first."); $("url").focus(); return; }
   if (!/https?:\/\//i.test(url)) { toast("That doesn't look like a link (it should start with http)."); return; }
+  submitAt = Date.now();
   $("go").disabled = true;
   try {
     await api("jobs", { url, kind: $("kind").value, quality: $("quality").value, cookies: $("cookies").value, playlist: $("playlist").checked });
-    $("url").value = ""; grow(); poll();
+    $("url").value = ""; grow(); scrollJobs = true; poll();
   } catch (e) { toast(e.message); }
   $("go").disabled = false; $("url").focus();
 }
