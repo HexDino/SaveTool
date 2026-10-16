@@ -4,7 +4,7 @@
 // same Wi-Fi can open the same page; downloads still land on this PC.
 // "Open to internet" (and SAVETOOL_PUBLIC=1 behind a Cloudflare Worker) expose it beyond the LAN.
 import http from "node:http";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHash } from "node:crypto";
 import { spawn } from "node:child_process";
 import { existsSync, statSync, createReadStream } from "node:fs";
 import { join, basename } from "node:path";
@@ -33,6 +33,15 @@ const ps = (script, env = {}) => new Promise(resolve => {
     p.stdout.setEncoding("utf8").on("data", d => out += d);
     p.on("error", () => resolve(""));
     p.on("close", () => resolve(out.trim()));
+});
+
+// sha256 of a file, streamed (cached per job by the caller)
+const sha256File = file => new Promise((resolve, reject) => {
+    const h = createHash("sha256");
+    const s = createReadStream(file);
+    s.on("data", c => h.update(c));
+    s.on("end", () => resolve(h.digest("hex")));
+    s.on("error", reject);
 });
 
 // Windows folder picker; resolves the chosen path, or "" if cancelled
@@ -136,6 +145,9 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
             const job = jobs.get(+url.pathname.slice("/api/file/".length));
             if (!job || job.status !== "done" || !job.file || !existsSync(job.file)) { res.writeHead(404); return res.end("no file"); }
             const size = statSync(job.file).size;
+            // SHA-256 of the file, computed once and cached on the job - lets the phone's
+            // browser prove the download arrived intact (see the "Test" button in the UI)
+            if (!job.sha256) job.sha256 = await sha256File(job.file);
             const name = basename(job.file);
             // ASCII fallback + RFC 5987 name: Android browsers want the plain filename,
             // iOS/desktop use filename* - sending both makes "save to Downloads" work everywhere
@@ -148,6 +160,7 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
                 "accept-ranges": "bytes", // lets phone download managers resume / stream the file
                 "cache-control": "no-store",
                 "x-content-type-options": "nosniff",
+                "x-content-sha256": job.sha256,
             };
             if (req.method === "HEAD") {
                 res.writeHead(200, headers);

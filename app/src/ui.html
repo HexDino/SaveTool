@@ -268,7 +268,8 @@ function updateJob(el, j) {
   set(".chip", site(j.url));
   set(".title", j.title).title = j.url;
   el.querySelector(".bar > i").style.width = (j.status === "done" ? 100 : j.progress) + "%";
-  set(".msg", j.message + (live && j.progress ? ` · ${j.progress}%` : "") + (ON_PHONE && j.status === "done" && j.file ? " · tap Save to phone" : ""));
+  const tr = testResults.get(j.id);
+  set(".msg", j.message + (live && j.progress ? ` · ${j.progress}%` : "") + (ON_PHONE && j.status === "done" && j.file ? " · tap Save to phone" : "") + (tr ? ` · ${tr}` : ""));
   const f = el.querySelector(".file");
   f.hidden = j.status !== "done" || !j.file;
   if (!f.hidden) { f.textContent = baseName(j.file); f.title = j.file; }
@@ -279,7 +280,9 @@ function updateJob(el, j) {
     const b = (a, t) => `<button class="small" data-act="${a}" data-id="${j.id}">${t}</button>`;
     // "Show file" opens Explorer on the PC - pointless on a phone, where the useful action is Save
     const saveLink = `<a class="small${ON_PHONE ? " primary" : ""}" href="/api/file/${j.id}?t=${TOKEN}" download title="Save the file into this device's Downloads folder">${ON_PHONE ? "Save to phone" : "Save"}</a>`;
-    act.innerHTML = (j.status === "done" ? (ON_PHONE ? "" : b("open", "Show file")) + saveLink : "")
+    // proves the file downloads intact on THIS device: fetch it, hash it, compare with the server
+    const testBtn = `<button class="small" data-test="${j.id}" title="Download the file in this browser and verify SHA-256">Test</button>`;
+    act.innerHTML = (j.status === "done" ? (ON_PHONE ? "" : b("open", "Show file")) + saveLink + testBtn : "")
       + (j.status === "error" || j.status === "cancelled" ? b("retry", "Retry") : "")
       + (live ? b("cancel", "Cancel") : b("remove", "Remove"));
   }
@@ -379,6 +382,74 @@ $("clear").onclick = async () => {
   } catch (e) { toast(e.message); }
   poll();
 };
+// last download-test result per job id, appended to the job message by the poller
+const testResults = new Map();
+
+// compact SHA-256 for insecure http:// pages (LAN over IP), where crypto.subtle is unavailable.
+// Verified against node:crypto on empty/55/56/64-byte and multi-block inputs.
+function sha256hex(u8) {
+    const rr = (x, n) => (x >>> n) | (x << (32 - n));
+    const isPrime = x => { for (let d = 2; d * d <= x; d++) if (x % d === 0) return false; return true; };
+    const K = [];
+    for (let n = 2; K.length < 64; n++) if (isPrime(n)) K.push(Math.floor((Math.cbrt(n) % 1) * 2 ** 32));
+    let h = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+    const total = ((u8.length + 9 + 63) >> 6) << 6;
+    const buf = new Uint8Array(total);
+    buf.set(u8);
+    buf[u8.length] = 0x80;
+    const dv = new DataView(buf.buffer);
+    dv.setUint32(total - 8, Math.floor(u8.length / 0x20000000));
+    dv.setUint32(total - 4, (u8.length << 3) >>> 0);
+    const w = new Uint32Array(64);
+    for (let off = 0; off < total; off += 64) {
+        for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4);
+        for (let i = 16; i < 64; i++) {
+            const s0 = rr(w[i - 15], 7) ^ rr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+            const s1 = rr(w[i - 2], 17) ^ rr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+            w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+        }
+        let [a, b, c, d, e, f, g, hh] = h;
+        for (let i = 0; i < 64; i++) {
+            const S1 = rr(e, 6) ^ rr(e, 11) ^ rr(e, 25);
+            const ch = (e & f) ^ (~e & g);
+            const t1 = (hh + S1 + ch + K[i] + w[i]) >>> 0;
+            const S0 = rr(a, 2) ^ rr(a, 13) ^ rr(a, 22);
+            const t2 = (S0 + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+            hh = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+        }
+        h = [h[0] + a, h[1] + b, h[2] + c, h[3] + d, h[4] + e, h[5] + f, h[6] + g, h[7] + hh].map(x => x >>> 0);
+    }
+    return h.map(x => x.toString(16).padStart(8, "0")).join("");
+}
+
+// download the finished file in THIS browser and verify its SHA-256 against the server -
+// the strongest proof the mobile download path works on the actual device
+async function testDownload(id) {
+    const t0 = performance.now();
+    const res = await fetch(`/api/file/${id}?t=${TOKEN}`);
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const buf = await res.arrayBuffer();
+    const ms = Math.max(1, Math.round(performance.now() - t0));
+    const size = buf.byteLength >= 1048576 ? (buf.byteLength / 1048576).toFixed(1) + " MB"
+               : buf.byteLength >= 1024 ? (buf.byteLength / 1024).toFixed(1) + " KB" : buf.byteLength + " B";
+    const want = res.headers.get("x-content-sha256");
+    const got = crypto.subtle
+        ? [...new Uint8Array(await crypto.subtle.digest("SHA-256", buf))].map(b => b.toString(16).padStart(2, "0")).join("")
+        : sha256hex(new Uint8Array(buf)); // http:// pages (LAN) have no crypto.subtle
+    if (want && got !== want) throw new Error("SHA-256 mismatch - file corrupted in transit");
+    return { ok: true, line: `test OK · ${size} in ${ms / 1000}s · SHA-256 match` };
+}
+
+$("jobs").addEventListener("click", async e => {
+    const t = e.target.closest("button[data-test]"); if (!t) return;
+    const id = +t.dataset.test;
+    t.disabled = true;
+    testResults.set(id, "testing…");
+    poll();
+    try { testResults.set(id, (await testDownload(id)).line); }
+    catch (err) { testResults.set(id, "✗ test failed: " + err.message); }
+    poll();
+});
 $("jobs").onclick = async e => {
   const b = e.target.closest("button[data-act]"); if (!b) return;
   b.disabled = true;
