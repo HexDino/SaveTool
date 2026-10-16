@@ -126,7 +126,7 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
         const url = new URL(req.url, "http://x");
 
         // browser downloads cannot send custom headers, so the file route takes the token in the query
-        const isFile = req.method === "GET" && url.pathname.startsWith("/api/file/");
+        const isFile = (req.method === "GET" || req.method === "HEAD") && url.pathname.startsWith("/api/file/");
 
         if (req.method === "GET" && url.pathname === "/") {
             res.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
@@ -140,12 +140,19 @@ export function startServer({ jobs, tools, getOutDir, setOutDir, version, source
             // ASCII fallback + RFC 5987 name: Android browsers want the plain filename,
             // iOS/desktop use filename* - sending both makes "save to Downloads" work everywhere
             const ascii = name.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "");
+            // application/octet-stream (not video/mp4) + nosniff is what makes mobile browsers
+            // SAVE the file instead of opening it in a media player - the fix for iPhone Safari
             const headers = {
-                "content-type": job.file.endsWith(".mp3") ? "audio/mpeg" : job.file.endsWith(".mp4") ? "video/mp4" : "application/octet-stream",
+                "content-type": "application/octet-stream",
                 "content-disposition": `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`,
                 "accept-ranges": "bytes", // lets phone download managers resume / stream the file
                 "cache-control": "no-store",
+                "x-content-type-options": "nosniff",
             };
+            if (req.method === "HEAD") {
+                res.writeHead(200, headers);
+                return res.end();
+            }
             // range requests (resume, video players, Android download manager)
             const range = /^bytes=(\d*)-(\d*)$/.exec(String(req.headers.range || "").trim());
             if (range) {
