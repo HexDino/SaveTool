@@ -83,7 +83,8 @@ footer .spacer { flex: 1; }
 .setup .bar > i.indet { width: 40% !important; animation: slide 1.2s ease-in-out infinite; }
 @keyframes slide { 0% { margin-left: -40%; } 100% { margin-left: 100%; } }
 .chip { flex: none; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: var(--soft); border-radius: 999px; padding: 2px 9px; }
-.job .file { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
+.job .file { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; cursor: pointer; }
+.job .file:hover { color: var(--accent-hover); }
 .btn-icon { width: 36px; height: 36px; padding: 0; display: grid; place-items: center; border-radius: 10px; color: var(--muted); }
 .tools .sep { flex: 1; }
 .fine { color: var(--muted); font-size: 12.5px; margin: 8px 6px 0; }
@@ -154,7 +155,7 @@ footer .spacer { flex: 1; }
   </section>
 
   <section class="card box">
-    <textarea id="url" rows="2" placeholder="Paste one or more links here (one per line)" autofocus></textarea>
+    <textarea id="url" rows="2" placeholder="Paste one or more links here (one per line)" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go"></textarea>
     <div class="tools">
       <label class="pill">Save as
         <select id="kind"><option value="video">Video (MP4)</option><option value="audio">Audio (MP3)</option></select>
@@ -382,7 +383,15 @@ $("clear").onclick = async () => {
   } catch (e) { toast(e.message); }
   poll();
 };
-// last download-test result per job id, appended to the job message by the poller
+// PC-only dialogs (they open on the PC's screen): pointless when you're on a phone
+if (ON_PHONE) { $("choose").hidden = true; $("folder").hidden = true; }
+
+// tap the file line to copy its full path
+$("jobs").addEventListener("click", async e => {
+    const f = e.target.closest(".file"); if (!f || !f.title) return;
+    try { await navigator.clipboard.writeText(f.title); toast("Path copied to the clipboard."); }
+    catch { toast("Can't copy here - the path is in the tooltip."); }
+});
 const testResults = new Map();
 
 // compact SHA-256 for insecure http:// pages (LAN over IP), where crypto.subtle is unavailable.
@@ -458,6 +467,8 @@ $("jobs").onclick = async e => {
 };
 
 loadOpts(); syncOpts(); grow();
+// mobile keyboards: don't pop the keyboard over the page on load
+if (!ON_PHONE) $("url").focus();
 poll(); setInterval(poll, 900);
 </script>
 </body>
