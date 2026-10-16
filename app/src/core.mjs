@@ -1,6 +1,6 @@
 // Threads extractor core. This is the file that breaks when Meta changes the page:
 // edit/replace it (or drop a fixed copy next to the exe as core.mjs) to update.
-export const VERSION = "1.8.1";
+export const VERSION = "1.8.2";
 export const UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36";
 const pageHeaders = {
     "user-agent": UA,
@@ -19,8 +19,20 @@ export function parseThreadsUrl(input) {
     if (!/^(www\.)?threads\.(com|net)$/.test(u.hostname)) throw new Error("not a threads.com / threads.net url");
     // /@user/post/CODE  or short form /t/CODE
     const code = u.pathname.match(/\/post\/([\w-]+)/)?.[1] || u.pathname.match(/^\/t\/([\w-]+)/)?.[1];
-    if (!code) throw new Error("url is not a post link (expected /@user/post/<code>)");
+    if (!code) throw new Error("url is not a post link (expected /@user/post/<code> or /share/<id>)");
     return code;
+}
+
+// Share links (threads.com/share/<id>, and the app's copied links with ?xmt=...) redirect to the
+// canonical /@user/post/<code> URL, so follow the redirect once and read the code from there.
+export async function resolveThreadsCode(input) {
+    try { return parseThreadsUrl(input); }
+    catch (e) {
+        let res;
+        try { res = await fetchRetry(input, { headers: pageHeaders }); }
+        catch { throw e; } // network problem: report the original parse error
+        return parseThreadsUrl(res.url);
+    }
 }
 
 export async function fetchRetry(url, opts, tries = 3) {
@@ -55,7 +67,7 @@ function pickMedia(node) {
 }
 
 export async function getThreadsMedia(input) {
-    const code = parseThreadsUrl(input);
+    const code = await resolveThreadsCode(input);
     const html = await fetchRetry(`https://www.threads.com/@_/post/${code}`, { headers: pageHeaders }).then(r => r.text());
 
     const blobs = [...html.matchAll(/<script type="application\/json"[^>]*>(.*?)<\/script>/gs)]

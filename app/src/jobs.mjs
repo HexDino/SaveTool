@@ -19,10 +19,18 @@ const isYoutube = url => { try { return /(^|\.)(youtube\.com|youtu\.be)$/.test(n
 
 export const isThreads = url => { try { return /^(www\.)?threads\.(com|net)$/.test(new URL(url).hostname); } catch { return false; } };
 
+// Long URLs in tool errors make the job card unreadable on a phone: keep the host only.
+const shortenLinks = s => String(s).replace(/https?:\/\/\S+/g, u => {
+    try {
+        const x = new URL(u.replace(/[),.;]+$/, ""));
+        return x.hostname + (x.pathname === "/" ? "" : "/…");
+    } catch { return "[link]"; }
+});
+
 // Turn the tail of a failed yt-dlp run into one line the user can act on.
 function failureMessage(r) {
     const all = r.tail.join(" ");
-    const hint = (r.tail.at(-1) || "download failed").replace(/^ERROR:\s*(\[[^\]]+\]\s*)?/, "").slice(0, 200);
+    const hint = shortenLinks((r.tail.at(-1) || "download failed").replace(/^ERROR:\s*(\[[^\]]+\]\s*)?/, "")).slice(0, 200);
     const extra =
         /not a bot|Sign in to confirm|cookies for the authentication/i.test(all)
             ? "This site wants a signed-in session: set Login to your browser (close Chrome/Edge first) or put a cookies.txt next to the exe."

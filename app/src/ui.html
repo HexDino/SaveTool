@@ -63,7 +63,7 @@ h2 .spacer { flex: 1; }
 .job .top { display: flex; gap: 10px; align-items: center; }
 .job .title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .job .msg { color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
-.job.error .msg { color: var(--err); }
+.job.error .msg { color: var(--err); display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
 .job.done .msg { color: var(--ok); }
 .job .actions { display: flex; gap: 6px; }
 .bar { height: 6px; background: var(--track); border-radius: 99px; overflow: hidden; }
@@ -270,7 +270,8 @@ function updateJob(el, j) {
   set(".title", j.title).title = j.url;
   el.querySelector(".bar > i").style.width = (j.status === "done" ? 100 : j.progress) + "%";
   const tr = testResults.get(j.id);
-  set(".msg", j.message + (live && j.progress ? ` · ${j.progress}%` : "") + (ON_PHONE && j.status === "done" && j.file ? " · tap Save to phone" : "") + (tr ? ` · ${tr}` : ""));
+  const msg = j.message + (live && j.progress ? ` · ${j.progress}%` : "") + (ON_PHONE && j.status === "done" && j.file ? " · tap Save to phone" : "") + (tr ? ` · ${tr}` : "");
+  set(".msg", msg).title = msg; // long errors are clamped in CSS, full text on hover/long-press
   const f = el.querySelector(".file");
   f.hidden = j.status !== "done" || !j.file;
   if (!f.hidden) { f.textContent = baseName(j.file); f.title = j.file; }
